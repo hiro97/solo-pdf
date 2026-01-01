@@ -382,12 +382,27 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       const startX = startPointRef.current.x
       const startY = startPointRef.current.y
 
-      const left = Math.min(startX, x)
-      const top = Math.min(startY, y)
-      const rectWidth = Math.abs(x - startX)
-      const rectHeight = Math.abs(y - startY)
+      // Calculate width and height with direction
+      const width = x - startX
+      const height = y - startY
 
-      activeShapeRef.current.set({ left, top, width: rectWidth, height: rectHeight })
+      // Set origin based on drag direction for consistent reference point
+      const originX = width >= 0 ? 'left' : 'right'
+      const originY = height >= 0 ? 'top' : 'bottom'
+
+      // Use absolute values for dimensions
+      const rectWidth = Math.abs(width)
+      const rectHeight = Math.abs(height)
+
+      // Keep the reference point at the initial click position
+      activeShapeRef.current.set({
+        left: startX,
+        top: startY,
+        width: rectWidth,
+        height: rectHeight,
+        originX,
+        originY,
+      })
       canvas.renderAll()
     }
 
@@ -398,6 +413,40 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       const rect = activeShapeRef.current
 
       if (rect.width && rect.height && rect.width > 5 && rect.height > 5) {
+        // Normalize the rectangle: convert to top-left origin for consistent storage
+        const currentLeft = rect.left || 0
+        const currentTop = rect.top || 0
+        const currentWidth = rect.width || 0
+        const currentHeight = rect.height || 0
+        const currentOriginX = rect.originX || 'left'
+        const currentOriginY = rect.originY || 'top'
+
+        // Calculate actual top-left position
+        let normalizedLeft = currentLeft
+        let normalizedTop = currentTop
+
+        if (currentOriginX === 'right') {
+          normalizedLeft = currentLeft - currentWidth
+        } else if (currentOriginX === 'center') {
+          normalizedLeft = currentLeft - currentWidth / 2
+        }
+
+        if (currentOriginY === 'bottom') {
+          normalizedTop = currentTop - currentHeight
+        } else if (currentOriginY === 'center') {
+          normalizedTop = currentTop - currentHeight / 2
+        }
+
+        // Update rectangle to use top-left origin
+        rect.set({
+          left: normalizedLeft,
+          top: normalizedTop,
+          originX: 'left',
+          originY: 'top',
+        })
+
+        canvas.renderAll()
+
         const json = JSON.stringify(rect.toObject())
         const type = rect.fill === '#000000' ? 'redact' : 'rectangle'
         onAnnotationAddRef.current(json, type)
@@ -488,6 +537,19 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         strokeWidth: isRedact ? 0 : settings.strokeWidth,
         selectable: true,
         evented: true,
+        // Set initial origin at top-left (will update based on drag direction)
+        originX: 'left',
+        originY: 'top',
+        // Configure resize controls
+        hasControls: true,
+        hasBorders: true,
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderColor: '#2563eb',
+        // Lock uniform scaling to allow independent width/height adjustment
+        lockUniScaling: false,
       })
 
       cvs.add(rect)
@@ -611,9 +673,20 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         } else if (objType === 'rect') {
           const rect = new Rect({
             ...restData,
+            // Ensure consistent origin at top-left
+            originX: 'left',
+            originY: 'top',
             selectable: true,
             hasControls: true,
             hasBorders: true,
+            // Resize control styling
+            cornerColor: '#2563eb',
+            cornerSize: 8,
+            cornerStyle: 'circle',
+            transparentCorners: false,
+            borderColor: '#2563eb',
+            // Allow independent width/height adjustment
+            lockUniScaling: false,
           })
           canvas.add(rect)
         } else if (objType === 'path') {
