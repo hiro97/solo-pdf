@@ -42,6 +42,9 @@ export function EditorPageContent() {
     prevPage,
     rotatePage,
     deletePage,
+    reorderPages,
+    extractPages,
+    mergePDF,
     savePDF,
   } = usePDFDocument()
 
@@ -247,6 +250,9 @@ export function EditorPageContent() {
           pdfDoc={pdfJs}
           currentPage={currentPage}
           onPageSelect={goToPage}
+          onPageReorder={reorderPages}
+          onPagesExtract={extractPages}
+          onPDFMerge={mergePDF}
         />
 
         {/* Canvas area - renders all pages with vertical scroll */}

@@ -257,6 +257,123 @@ export function usePDFDocument() {
     URL.revokeObjectURL(url)
   }, [state.pdfLib, state.file])
 
+  const reorderPages = useCallback(async (fromIndex: number, toIndex: number) => {
+    if (!state.pdfLib) return
+
+    // Create new page order
+    const totalPages = state.pdfLib.getPageCount()
+    const pageIndices = Array.from({ length: totalPages }, (_, i) => i)
+    const [movedPage] = pageIndices.splice(fromIndex, 1)
+    pageIndices.splice(toIndex, 0, movedPage)
+
+    // Create new document with reordered pages
+    const newPdf = await PDFDocument.create()
+    for (const pageIndex of pageIndices) {
+      const [copiedPage] = await newPdf.copyPages(state.pdfLib, [pageIndex])
+      newPdf.addPage(copiedPage)
+    }
+
+    // Reload PDF.js document
+    const pdfBytes = await newPdf.save()
+    const loadingTask = pdfjsLib.getDocument({
+      data: pdfBytes,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    })
+    const pdfJsDoc = await loadingTask.promise
+
+    setState(prev => ({
+      ...prev,
+      pdfLib: newPdf,
+      pdfJs: pdfJsDoc,
+    }))
+  }, [state.pdfLib])
+
+  const extractPages = useCallback(async (pageNumbers: number[]) => {
+    if (!state.pdfLib || !state.file) return
+
+    // Create new PDF with selected pages
+    const newPdf = await PDFDocument.create()
+
+    for (const pageNum of pageNumbers.sort((a, b) => a - b)) {
+      const pageIndex = pageNum - 1
+      if (pageIndex >= 0 && pageIndex < state.pdfLib.getPageCount()) {
+        const [copiedPage] = await newPdf.copyPages(state.pdfLib, [pageIndex])
+        newPdf.addPage(copiedPage)
+      }
+    }
+
+    // Download extracted PDF
+    const pdfBytes = await newPdf.save()
+    const arrayBuffer = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength
+    ) as ArrayBuffer
+    const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    const baseName = state.file.name.replace('.pdf', '')
+    a.download = `${baseName}-pages-${pageNumbers.join('-')}.pdf`
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }, [state.pdfLib, state.file])
+
+  const mergePDF = useCallback(async (file: File, insertAtPage: number) => {
+    if (!state.pdfLib) return
+
+    try {
+      // Load the PDF to merge
+      const arrayBuffer = await file.arrayBuffer()
+      const pdfToMerge = await PDFDocument.load(arrayBuffer, {
+        ignoreEncryption: true,
+      })
+
+      // Create new PDF
+      const newPdf = await PDFDocument.create()
+
+      // Copy pages before insertion point
+      const insertIndex = insertAtPage - 1
+      for (let i = 0; i < insertIndex && i < state.pdfLib.getPageCount(); i++) {
+        const [copiedPage] = await newPdf.copyPages(state.pdfLib, [i])
+        newPdf.addPage(copiedPage)
+      }
+
+      // Copy all pages from PDF to merge
+      const pagesToMerge = pdfToMerge.getPageIndices()
+      const copiedPages = await newPdf.copyPages(pdfToMerge, pagesToMerge)
+      copiedPages.forEach(page => newPdf.addPage(page))
+
+      // Copy remaining pages after insertion point
+      for (let i = insertIndex; i < state.pdfLib.getPageCount(); i++) {
+        const [copiedPage] = await newPdf.copyPages(state.pdfLib, [i])
+        newPdf.addPage(copiedPage)
+      }
+
+      // Reload documents
+      const pdfBytes = await newPdf.save()
+      const loadingTask = pdfjsLib.getDocument({
+        data: pdfBytes,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true,
+      })
+      const pdfJsDoc = await loadingTask.promise
+
+      setState(prev => ({
+        ...prev,
+        pdfLib: newPdf,
+        pdfJs: pdfJsDoc,
+        pageCount: pdfJsDoc.numPages,
+      }))
+    } catch (err) {
+      console.error('Failed to merge PDF:', err)
+    }
+  }, [state.pdfLib])
+
   const reset = useCallback(() => {
     setState(initialState)
   }, [])
@@ -269,6 +386,9 @@ export function usePDFDocument() {
     prevPage,
     rotatePage,
     deletePage,
+    reorderPages,
+    extractPages,
+    mergePDF,
     savePDF,
     reset,
   }
