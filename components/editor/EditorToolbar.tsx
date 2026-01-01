@@ -16,6 +16,7 @@ import {
   EyeOff,
   MousePointer,
   FolderOpen,
+  ImagePlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -299,6 +300,19 @@ export function EditorToolbar({
               </Button>
             </TooltipTrigger>
             <TooltipContent>Signature</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === "image" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => onToolChange("image")}
+              >
+                <ImagePlus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Insert Image</TooltipContent>
           </Tooltip>
 
           <Tooltip>

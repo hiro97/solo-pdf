@@ -37,8 +37,15 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // Track which pages are visible (with buffer)
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([1, 2, 3]))
+  // Initialize as empty - pages are set visible via useEffect to ensure proper mount cycle
+  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set())
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Initialize first few pages as visible AFTER mount
+  // This ensures page 1 goes through the same state-change-triggered mount flow as scrolled pages
+  useEffect(() => {
+    setVisiblePages(new Set([1, 2, 3]))
+  }, [])
 
   // Notify parent of current page change (deferred to avoid setState during render)
   useEffect(() => {

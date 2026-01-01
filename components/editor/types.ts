@@ -11,6 +11,7 @@ export type ToolType =
   | 'line'
   | 'arrow'
   | 'signature'
+  | 'image'
   | 'redact'
 
 export interface PDFState {

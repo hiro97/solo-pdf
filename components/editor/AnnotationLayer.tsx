@@ -133,6 +133,8 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
   // Update canvas mode when tool changes
   useEffect(() => {
+    if (!canvasReady) return
+
     const canvas = fabricRef.current
     if (!canvas) return
 
@@ -168,22 +170,25 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       line: 'crosshair',
       arrow: 'crosshair',
       signature: 'pointer',
+      image: 'crosshair',
       redact: 'crosshair',
     }
     canvas.defaultCursor = cursorMap[activeTool] || 'default'
     canvas.hoverCursor = activeTool === 'text' ? 'text' : (cursorMap[activeTool] || 'move')
 
     canvas.renderAll()
-  }, [activeTool, toolSettings])
+  }, [activeTool, toolSettings, canvasReady])
 
   // Update brush settings when tool settings change
   useEffect(() => {
+    if (!canvasReady) return
+
     const canvas = fabricRef.current
     if (!canvas || !canvas.freeDrawingBrush) return
 
     canvas.freeDrawingBrush.width = toolSettings.strokeWidth
     canvas.freeDrawingBrush.color = toolSettings.color
-  }, [toolSettings])
+  }, [toolSettings, canvasReady])
 
   // Handle mouse events for tools - registered ONCE, reads current tool from refs
   useEffect(() => {
@@ -235,9 +240,123 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           break
 
         case 'signature':
+          // Store click position for signature placement
+          (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition = { x, y }
+          // Ensure THIS page's addSignatureImage is used (not another page's)
+          (window as unknown as { addSignatureToCanvas?: (url: string) => void }).addSignatureToCanvas = (dataUrl: string) => {
+            const pos = (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
+            insertSignatureImage(canvas, dataUrl, pos?.x ?? x, pos?.y ?? y)
+          }
           onSignatureRequestRef.current?.()
           break
+
+        case 'image':
+          if (clickedObject) return
+          // Create file input and trigger click
+          const fileInput = document.createElement('input')
+          fileInput.type = 'file'
+          fileInput.accept = 'image/*'
+          fileInput.onchange = (event) => {
+            const file = (event.target as HTMLInputElement).files?.[0]
+            if (file) {
+              const reader = new FileReader()
+              reader.onload = (e) => {
+                const dataUrl = e.target?.result as string
+                if (dataUrl) {
+                  insertImage(canvas, dataUrl, x, y)
+                }
+              }
+              reader.readAsDataURL(file)
+            }
+          }
+          fileInput.click()
+          break
       }
+    }
+
+    // Helper: Insert image at position
+    const insertImage = (cvs: Canvas, dataUrl: string, x: number, y: number) => {
+      const img = new window.Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        // Keep original resolution, but scale display size to fit canvas if too large
+        const canvasWidth = cvs.getWidth()
+        const canvasHeight = cvs.getHeight()
+        const maxDisplayWidth = canvasWidth * 0.8
+        const maxDisplayHeight = canvasHeight * 0.8
+
+        // Calculate scale to fit within canvas while maintaining aspect ratio
+        let displayScale = 1
+        if (img.width > maxDisplayWidth || img.height > maxDisplayHeight) {
+          displayScale = Math.min(
+            maxDisplayWidth / img.width,
+            maxDisplayHeight / img.height
+          )
+        }
+
+        const fabricImage = new FabricImage(img, {
+          left: x,
+          top: y,
+          scaleX: displayScale,
+          scaleY: displayScale,
+          selectable: true,
+          hasControls: true,
+          hasBorders: true,
+          cornerColor: '#2563eb',
+          cornerSize: 8,
+          cornerStyle: 'circle',
+          transparentCorners: false,
+          borderColor: '#2563eb',
+        })
+
+        cvs.add(fabricImage)
+        cvs.setActiveObject(fabricImage)
+        cvs.renderAll()
+
+        const json = JSON.stringify(fabricImage.toObject(['src']))
+        onAnnotationAddRef.current(json, 'image')
+      }
+      img.src = dataUrl
+    }
+
+    // Helper: Insert signature image at position
+    const insertSignatureImage = (cvs: Canvas, dataUrl: string, x: number, y: number) => {
+      const img = new window.Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        // Scale signature to reasonable size
+        const maxSize = 200
+        let signatureScale = 1
+        if (img.width > maxSize || img.height > maxSize) {
+          signatureScale = maxSize / Math.max(img.width, img.height)
+        }
+
+        const fabricImage = new FabricImage(img, {
+          left: x,
+          top: y,
+          scaleX: signatureScale,
+          scaleY: signatureScale,
+          selectable: true,
+          hasControls: true,
+          hasBorders: true,
+          cornerColor: '#2563eb',
+          cornerSize: 8,
+          cornerStyle: 'circle',
+          transparentCorners: false,
+          borderColor: '#2563eb',
+        })
+
+        cvs.add(fabricImage)
+        cvs.setActiveObject(fabricImage)
+        cvs.renderAll()
+
+        const json = JSON.stringify(fabricImage.toObject(['src']))
+        onAnnotationAddRef.current(json, 'signature')
+
+        // Clear pending position
+        delete (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
+      }
+      img.src = dataUrl
     }
 
     // Handle double click for text editing
@@ -400,21 +519,44 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     const canvas = fabricRef.current
     if (!canvas) return
 
+    // Get stored click position if not provided
+    const pendingPos = (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
+    const posX = x ?? pendingPos?.x ?? (width * scale) / 2 - 100
+    const posY = y ?? pendingPos?.y ?? (height * scale) / 2 - 50
+
+    // Clear pending position
+    delete (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
+
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
+      // Scale signature to reasonable size
+      const maxSize = 200
+      let signatureScale = 1
+      if (img.width > maxSize || img.height > maxSize) {
+        signatureScale = maxSize / Math.max(img.width, img.height)
+      }
+
       const fabricImage = new FabricImage(img, {
-        left: x ?? (width * scale) / 2 - 100,
-        top: y ?? (height * scale) / 2 - 50,
-        scaleX: 0.5,
-        scaleY: 0.5,
+        left: posX,
+        top: posY,
+        scaleX: signatureScale,
+        scaleY: signatureScale,
+        selectable: true,
+        hasControls: true,
+        hasBorders: true,
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderColor: '#2563eb',
       })
 
       canvas.add(fabricImage)
       canvas.setActiveObject(fabricImage)
       canvas.renderAll()
 
-      const json = JSON.stringify(fabricImage.toObject())
+      const json = JSON.stringify(fabricImage.toObject(['src']))
       onAnnotationAddRef.current(json, 'signature')
     }
     img.src = dataUrl
@@ -429,6 +571,8 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
   // Load annotations when page changes
   useEffect(() => {
+    if (!canvasReady) return
+
     const canvas = fabricRef.current
     if (!canvas) return
 
@@ -482,7 +626,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           })
           canvas.add(path)
         } else if (objType === 'image') {
-          // Signature images
+          // Image annotations (signatures and inserted images)
           const img = new window.Image()
           img.crossOrigin = 'anonymous'
           img.onload = () => {
@@ -491,6 +635,11 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
               selectable: true,
               hasControls: true,
               hasBorders: true,
+              cornerColor: '#2563eb',
+              cornerSize: 8,
+              cornerStyle: 'circle',
+              transparentCorners: false,
+              borderColor: '#2563eb',
             })
             canvas.add(fabricImage)
             canvas.renderAll()
@@ -503,7 +652,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     })
 
     canvas.renderAll()
-  }, [pageNumber, annotations])
+  }, [pageNumber, annotations, canvasReady])
 
   // Calculate display dimensions
   const displayWidth = width * scale
