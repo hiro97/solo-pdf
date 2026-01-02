@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Instrument_Serif, Great_Vibes, Dancing_Script, Allura } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { LayoutWrapper } from "@/components/nav/LayoutWrapper"
+import { Toaster } from "sonner"
 import { siteConfig } from "@/lib/site"
 import "@/styles/globals.css"
 
@@ -89,6 +90,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <LayoutWrapper>{children}</LayoutWrapper>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>
