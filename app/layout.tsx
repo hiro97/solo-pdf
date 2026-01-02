@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google"
+import { Geist, Geist_Mono, Instrument_Serif, Great_Vibes, Dancing_Script, Allura } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { LayoutWrapper } from "@/components/nav/LayoutWrapper"
 import { siteConfig } from "@/lib/site"
@@ -17,6 +17,25 @@ const geistMono = Geist_Mono({
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-serif",
+  weight: "400",
+  subsets: ["latin"],
+})
+
+// Signature fonts
+const greatVibes = Great_Vibes({
+  variable: "--font-great-vibes",
+  weight: "400",
+  subsets: ["latin"],
+})
+
+const dancingScript = Dancing_Script({
+  variable: "--font-dancing-script",
+  weight: "400",
+  subsets: ["latin"],
+})
+
+const allura = Allura({
+  variable: "--font-allura",
   weight: "400",
   subsets: ["latin"],
 })
@@ -53,8 +72,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5977464916036907"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} min-h-screen bg-background font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${greatVibes.variable} ${dancingScript.variable} ${allura.variable} min-h-screen bg-background font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

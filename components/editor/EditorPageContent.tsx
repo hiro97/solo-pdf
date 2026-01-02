@@ -22,6 +22,9 @@ export function EditorPageContent() {
     strokeWidth: 2,
     fontSize: 16,
     fontFamily: 'Helvetica',
+    bold: false,
+    italic: false,
+    underline: false,
   })
   const [pageDimensions, setPageDimensions] = useState<PageDimensions | null>(null)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
@@ -42,6 +45,9 @@ export function EditorPageContent() {
     prevPage,
     rotatePage,
     deletePage,
+    reorderPages,
+    mergePDF,
+    extractPages,
     savePDF,
   } = usePDFDocument()
 
@@ -115,6 +121,20 @@ export function EditorPageContent() {
     }
   }, [deletePage, currentPage, pageCount])
 
+  // Handle delete multiple pages from sidebar
+  const handleDeletePages = useCallback(
+    (pageIndices: number[]) => {
+      // Delete pages in reverse order to maintain correct indices
+      const sorted = [...pageIndices].sort((a, b) => b - a)
+      for (const index of sorted) {
+        if (pageCount > 1) {
+          deletePage(index)
+        }
+      }
+    },
+    [deletePage, pageCount]
+  )
+
   // Handle fit to page
   const handleFitToPage = useCallback(() => {
     if (containerRef.current && pageDimensions) {
@@ -125,8 +145,8 @@ export function EditorPageContent() {
 
   // Handle annotation add (now receives pageNumber from PageRenderer)
   const handleAnnotationAdd = useCallback(
-    (pageNumber: number, fabricJSON: string, type: ToolType) => {
-      addAnnotation(pageNumber, fabricJSON, type)
+    (pageNumber: number, fabricJSON: string, type: ToolType): string => {
+      return addAnnotation(pageNumber, fabricJSON, type)
     },
     [addAnnotation]
   )
@@ -174,6 +194,14 @@ export function EditorPageContent() {
       if (addFn) {
         addFn(dataUrl)
       }
+    },
+    []
+  )
+
+  // Handle style sync from AnnotationLayer (sync toolbar when text is selected)
+  const handleStyleSync = useCallback(
+    (styles: Partial<typeof toolSettings>) => {
+      setToolSettings(prev => ({ ...prev, ...styles }))
     },
     []
   )
@@ -247,6 +275,10 @@ export function EditorPageContent() {
           pdfDoc={pdfJs}
           currentPage={currentPage}
           onPageSelect={goToPage}
+          onReorderPages={reorderPages}
+          onMergePDF={mergePDF}
+          onExtractPages={extractPages}
+          onDeletePages={handleDeletePages}
         />
 
         {/* Canvas area - renders all pages with vertical scroll */}
@@ -262,6 +294,7 @@ export function EditorPageContent() {
           onAnnotationRemove={handleAnnotationRemove}
           onSignatureRequest={handleSignatureRequest}
           onCurrentPageChange={handleCurrentPageChange}
+          onStyleSync={handleStyleSync}
         />
       </div>
 

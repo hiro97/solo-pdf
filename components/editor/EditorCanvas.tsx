@@ -13,11 +13,12 @@ interface EditorCanvasProps {
   activeTool: ToolType
   toolSettings: ToolSettings
   getPageAnnotations: (pageNumber: number) => Annotation[]
-  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => void
+  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => string
   onAnnotationUpdate: (pageNumber: number, id: string, fabricJSON: string) => void
   onAnnotationRemove: (pageNumber: number, id: string) => void
   onSignatureRequest?: () => void
   onCurrentPageChange?: (pageNumber: number) => void
+  onStyleSync?: (styles: Partial<ToolSettings>) => void
   className?: string
 }
 
@@ -33,6 +34,7 @@ export function EditorCanvas({
   onAnnotationRemove,
   onSignatureRequest,
   onCurrentPageChange,
+  onStyleSync,
   className,
 }: EditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -108,6 +110,7 @@ export function EditorCanvas({
             onAnnotationRemove={onAnnotationRemove}
             onSignatureRequest={onSignatureRequest}
             onPageVisible={handlePageVisible}
+            onStyleSync={onStyleSync}
             isVisible={visiblePages.has(pageNumber)}
           />
         ))}

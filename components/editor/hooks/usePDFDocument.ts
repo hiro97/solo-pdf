@@ -146,6 +146,123 @@ export function usePDFDocument() {
     }))
   }, [state.pdfLib, state.pageCount])
 
+  // Reorder pages by moving a page from one index to another
+  const reorderPages = useCallback(async (fromIndex: number, toIndex: number) => {
+    if (!state.pdfLib || fromIndex === toIndex) return
+    if (fromIndex < 0 || fromIndex >= state.pageCount) return
+    if (toIndex < 0 || toIndex >= state.pageCount) return
+
+    setState(prev => ({ ...prev, isLoading: true }))
+
+    try {
+      // Create new PDF with reordered pages
+      const newPdf = await PDFDocument.create()
+      const pageIndices = Array.from({ length: state.pageCount }, (_, i) => i)
+
+      // Remove from old position and insert at new position
+      const [movedIndex] = pageIndices.splice(fromIndex, 1)
+      pageIndices.splice(toIndex, 0, movedIndex)
+
+      // Copy pages in new order
+      const copiedPages = await newPdf.copyPages(state.pdfLib, pageIndices)
+      copiedPages.forEach(page => newPdf.addPage(page))
+
+      // Reload documents
+      const pdfBytes = await newPdf.save()
+      const newPdfLib = await PDFDocument.load(pdfBytes)
+      const loadingTask = pdfjsLib.getDocument({
+        data: pdfBytes,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true,
+      })
+      const pdfJsDoc = await loadingTask.promise
+
+      setState(prev => ({
+        ...prev,
+        pdfLib: newPdfLib,
+        pdfJs: pdfJsDoc,
+        isLoading: false,
+      }))
+    } catch (err) {
+      console.error('Failed to reorder pages:', err)
+      setState(prev => ({ ...prev, isLoading: false }))
+    }
+  }, [state.pdfLib, state.pageCount])
+
+  // Merge another PDF file into the current document
+  const mergePDF = useCallback(async (file: File, insertAtIndex?: number) => {
+    if (!state.pdfLib) return
+
+    setState(prev => ({ ...prev, isLoading: true }))
+
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const externalPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+
+      const insertIndex = insertAtIndex ?? state.pageCount
+      const copiedPages = await state.pdfLib.copyPages(externalPdf, externalPdf.getPageIndices())
+
+      // Insert pages at specified position
+      copiedPages.forEach((page, i) => {
+        state.pdfLib!.insertPage(insertIndex + i, page)
+      })
+
+      // Reload PDF.js document
+      const pdfBytes = await state.pdfLib.save()
+      const loadingTask = pdfjsLib.getDocument({
+        data: pdfBytes,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true,
+      })
+      const pdfJsDoc = await loadingTask.promise
+
+      setState(prev => ({
+        ...prev,
+        pdfJs: pdfJsDoc,
+        pageCount: pdfJsDoc.numPages,
+        isLoading: false,
+      }))
+    } catch (err) {
+      console.error('Failed to merge PDF:', err)
+      setState(prev => ({ ...prev, isLoading: false }))
+    }
+  }, [state.pdfLib, state.pageCount])
+
+  // Extract selected pages as a new PDF and download
+  const extractPages = useCallback(async (pageIndices: number[]) => {
+    if (!state.pdfLib || !state.file || pageIndices.length === 0) return
+
+    setState(prev => ({ ...prev, isLoading: true }))
+
+    try {
+      const newPdf = await PDFDocument.create()
+      const copiedPages = await newPdf.copyPages(state.pdfLib, pageIndices)
+      copiedPages.forEach(page => newPdf.addPage(page))
+
+      const pdfBytes = await newPdf.save()
+      // Convert to ArrayBuffer to avoid SharedArrayBuffer type issues
+      const arrayBuffer = pdfBytes.buffer.slice(
+        pdfBytes.byteOffset,
+        pdfBytes.byteOffset + pdfBytes.byteLength
+      ) as ArrayBuffer
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = state.file.name.replace('.pdf', `-pages-${pageIndices.map(i => i + 1).join('-')}.pdf`)
+      a.click()
+
+      URL.revokeObjectURL(url)
+      setState(prev => ({ ...prev, isLoading: false }))
+    } catch (err) {
+      console.error('Failed to extract pages:', err)
+      setState(prev => ({ ...prev, isLoading: false }))
+    }
+  }, [state.pdfLib, state.file])
+
   const savePDF = useCallback(async (annotations?: AnnotationStore) => {
     if (!state.pdfLib || !state.file) return
 
@@ -269,6 +386,9 @@ export function usePDFDocument() {
     prevPage,
     rotatePage,
     deletePage,
+    reorderPages,
+    mergePDF,
+    extractPages,
     savePDF,
     reset,
   }

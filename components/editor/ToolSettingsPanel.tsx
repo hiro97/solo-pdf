@@ -1,8 +1,10 @@
 "use client"
 
 import { useCallback } from 'react'
+import { Bold, Italic, Underline } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -10,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import type { ToolType, ToolSettings } from './types'
 
 interface ToolSettingsPanelProps {
@@ -105,9 +108,52 @@ export function ToolSettingsPanel({
         </div>
       )}
 
-      {/* Font size - shown for text tool */}
+      {/* Text formatting - shown for text tool */}
       {activeTool === 'text' && (
         <>
+          {/* Bold, Italic, Underline toggle buttons */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateSetting('bold', !settings.bold)}
+              className={cn(
+                "h-8 w-8 p-0",
+                settings.bold && "bg-primary/20 text-primary"
+              )}
+              title="Bold (Ctrl+B)"
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateSetting('italic', !settings.italic)}
+              className={cn(
+                "h-8 w-8 p-0",
+                settings.italic && "bg-primary/20 text-primary"
+              )}
+              title="Italic (Ctrl+I)"
+            >
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateSetting('underline', !settings.underline)}
+              className={cn(
+                "h-8 w-8 p-0",
+                settings.underline && "bg-primary/20 text-primary"
+              )}
+              title="Underline (Ctrl+U)"
+            >
+              <Underline className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="w-px h-6 bg-border" /> {/* Separator */}
+
+          {/* Font size */}
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">
               Size
@@ -125,6 +171,7 @@ export function ToolSettingsPanel({
             </span>
           </div>
 
+          {/* Font family */}
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Font</Label>
             <Select

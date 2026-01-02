@@ -12,10 +12,11 @@ interface AnnotationLayerProps {
   toolSettings: ToolSettings
   pageNumber: number
   annotations: Annotation[]
-  onAnnotationAdd: (fabricJSON: string, type: ToolType) => void
+  onAnnotationAdd: (fabricJSON: string, type: ToolType) => string
   onAnnotationUpdate: (id: string, fabricJSON: string) => void
   onAnnotationRemove: (id: string) => void
   onSignatureRequest?: () => void
+  onStyleSync?: (styles: Partial<ToolSettings>) => void
 }
 
 export const AnnotationLayer = React.memo(function AnnotationLayer({
@@ -30,14 +31,18 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
   onAnnotationUpdate,
   onAnnotationRemove,
   onSignatureRequest,
+  onStyleSync,
 }: AnnotationLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<Canvas | null>(null)
   // Track when canvas is ready to ensure event handlers register properly
   const [canvasReady, setCanvasReady] = useState(false)
 
-  // Get devicePixelRatio for crisp rendering on high-DPI displays
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+  // Track canvas dimensions to prevent unnecessary reinitialization
+  const canvasDimensionsRef = useRef<{ width: number; height: number; scale: number } | null>(null)
+
+  // Track loaded annotations to prevent unnecessary reloading
+  const loadedAnnotationsRef = useRef<string>('')
 
   // Refs to avoid stale closures in event handlers
   const activeToolRef = useRef<ToolType>(activeTool)
@@ -72,14 +77,88 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     onSignatureRequestRef.current = onSignatureRequest
   }, [onSignatureRequest])
 
+  const onStyleSyncRef = useRef(onStyleSync)
+  useEffect(() => {
+    onStyleSyncRef.current = onStyleSync
+  }, [onStyleSync])
+
+  // Track if we're currently syncing styles to prevent circular updates
+  const isSyncingRef = useRef(false)
+
+  // Sync toolbar state with selected text's current styles
+  const syncToolbarWithText = useCallback((textObj: IText) => {
+    if (!onStyleSyncRef.current) return
+
+    // Set syncing flag to prevent circular updates
+    isSyncingRef.current = true
+
+    // Check if there's a partial text selection
+    const hasPartialSelection = textObj.isEditing &&
+      textObj.selectionEnd > textObj.selectionStart
+
+    if (hasPartialSelection) {
+      // Get styles of first selected character
+      const styles = textObj.getSelectionStyles()
+      if (styles.length > 0) {
+        const style = styles[0] as Record<string, unknown>
+        onStyleSyncRef.current({
+          bold: style.fontWeight === 'bold',
+          italic: style.fontStyle === 'italic',
+          underline: style.underline === true,
+          fontSize: (style.fontSize as number) || textObj.fontSize,
+          fontFamily: (style.fontFamily as string) || textObj.fontFamily,
+          color: (style.fill as string) || (textObj.fill as string),
+        })
+      }
+    } else {
+      // No partial selection - use object properties
+      onStyleSyncRef.current({
+        bold: textObj.fontWeight === 'bold',
+        italic: textObj.fontStyle === 'italic',
+        underline: textObj.underline === true,
+        fontSize: textObj.fontSize,
+        fontFamily: textObj.fontFamily,
+        color: textObj.fill as string,
+      })
+    }
+
+    // Reset syncing flag after a short delay to allow React state to settle
+    setTimeout(() => {
+      isSyncingRef.current = false
+    }, 0)
+  }, [])
+
   // Initialize Fabric.js canvas
   useEffect(() => {
     if (!canvasRef.current) return
 
-    // Calculate DPR-scaled dimensions for crisp rendering
+    // Calculate display dimensions
     const canvasWidth = width * scale
     const canvasHeight = height * scale
 
+    // Check if canvas already exists with same dimensions - skip reinitialization
+    const currentDims = canvasDimensionsRef.current
+    if (
+      fabricRef.current &&
+      currentDims &&
+      currentDims.width === width &&
+      currentDims.height === height &&
+      currentDims.scale === scale
+    ) {
+      console.log('[AnnotationLayer] Skipping canvas reinitialization for page', pageNumber, '- dimensions unchanged')
+      return
+    }
+
+    console.log('[AnnotationLayer] Initializing canvas for page', pageNumber, ':', { width, height, scale, canvasWidth, canvasHeight })
+
+    // Dispose existing canvas if any
+    if (fabricRef.current) {
+      fabricRef.current.dispose()
+      fabricRef.current = null
+    }
+
+    // Create canvas with proper dimensions
+    // Fabric.js v7 handles DPR internally, so we don't need manual scaling
     const canvas = new Canvas(canvasRef.current, {
       width: canvasWidth,
       height: canvasHeight,
@@ -89,30 +168,35 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     })
 
     fabricRef.current = canvas
+    canvasDimensionsRef.current = { width, height, scale }
 
-    // Apply DPR scaling for high-DPI displays
-    // This ensures crisp rendering on Retina screens
+    // Style the wrapper element for proper positioning over PDF
+    const wrapper = canvas.wrapperEl
+    if (wrapper) {
+      wrapper.style.position = 'absolute'
+      wrapper.style.top = '0'
+      wrapper.style.left = '0'
+      wrapper.style.width = `${canvasWidth}px`
+      wrapper.style.height = `${canvasHeight}px`
+      wrapper.style.zIndex = '20'
+      wrapper.style.pointerEvents = 'auto'
+    }
+
+    // Ensure upper canvas receives pointer events and is properly positioned
     const upperCanvas = canvas.upperCanvasEl
+    if (upperCanvas) {
+      upperCanvas.style.pointerEvents = 'auto'
+      upperCanvas.style.position = 'absolute'
+      upperCanvas.style.top = '0'
+      upperCanvas.style.left = '0'
+    }
+
+    // Lower canvas should not block events
     const lowerCanvas = canvas.lowerCanvasEl
-
-    if (upperCanvas && lowerCanvas) {
-      // Set internal resolution to DPR-scaled dimensions
-      upperCanvas.width = canvasWidth * dpr
-      upperCanvas.height = canvasHeight * dpr
-      lowerCanvas.width = canvasWidth * dpr
-      lowerCanvas.height = canvasHeight * dpr
-
-      // Keep CSS size at original dimensions
-      upperCanvas.style.width = `${canvasWidth}px`
-      upperCanvas.style.height = `${canvasHeight}px`
-      lowerCanvas.style.width = `${canvasWidth}px`
-      lowerCanvas.style.height = `${canvasHeight}px`
-
-      // Scale the canvas contexts
-      const upperCtx = upperCanvas.getContext('2d')
-      const lowerCtx = lowerCanvas.getContext('2d')
-      if (upperCtx) upperCtx.scale(dpr, dpr)
-      if (lowerCtx) lowerCtx.scale(dpr, dpr)
+    if (lowerCanvas) {
+      lowerCanvas.style.position = 'absolute'
+      lowerCanvas.style.top = '0'
+      lowerCanvas.style.left = '0'
     }
 
     // Configure drawing brush
@@ -125,11 +209,14 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     setCanvasReady(true)
 
     return () => {
-      canvas.dispose()
-      fabricRef.current = null
+      if (fabricRef.current) {
+        fabricRef.current.dispose()
+        fabricRef.current = null
+      }
+      canvasDimensionsRef.current = null
       setCanvasReady(false)  // Reset on cleanup
     }
-  }, [width, height, scale, dpr])
+  }, [width, height, scale, pageNumber])
 
   // Update canvas mode when tool changes
   useEffect(() => {
@@ -168,7 +255,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       rectangle: 'crosshair',
       circle: 'crosshair',
       line: 'crosshair',
-      arrow: 'crosshair',
+      textSelect: 'text',
       signature: 'pointer',
       image: 'crosshair',
       redact: 'crosshair',
@@ -190,6 +277,100 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     canvas.freeDrawingBrush.color = toolSettings.color
   }, [toolSettings, canvasReady])
 
+  // Apply tool settings to selected text object when settings change
+  useEffect(() => {
+    if (!canvasReady) return
+    // Prevent circular updates from style sync
+    if (isSyncingRef.current) return
+
+    const canvas = fabricRef.current
+    if (!canvas) return
+
+    const activeObject = canvas.getActiveObject()
+    if (!activeObject || activeObject.type !== 'i-text') return
+
+    const textObj = activeObject as IText
+
+    // Skip for newly created text boxes (no annotation ID yet) that are empty
+    // This prevents interference during initial text entry
+    const annotationId = (textObj as unknown as { annotationId?: string }).annotationId
+    if (!annotationId && (!textObj.text || textObj.text.length === 0)) {
+      return
+    }
+
+    // Check if there's a partial text selection within the IText (rich text editing)
+    const hasPartialSelection = textObj.isEditing &&
+      textObj.selectionEnd > textObj.selectionStart
+
+    // Build complete style object from toolSettings
+    const styleProps: Record<string, unknown> = {
+      fill: toolSettings.color,
+      fontSize: toolSettings.fontSize,
+      fontFamily: toolSettings.fontFamily,
+      fontWeight: toolSettings.bold ? 'bold' : 'normal',
+      fontStyle: toolSettings.italic ? 'italic' : 'normal',
+      underline: toolSettings.underline,
+    }
+
+    if (hasPartialSelection) {
+      // Apply styles only to the selected text range
+      textObj.setSelectionStyles(
+        styleProps,
+        textObj.selectionStart,
+        textObj.selectionEnd
+      )
+      // Force cache refresh
+      ;(textObj as unknown as { _forceClearCache: boolean })._forceClearCache = true
+    } else {
+      // No partial selection - apply to the entire text object
+      textObj.set(styleProps as Partial<IText>)
+    }
+
+    // Force text to recalculate dimensions
+    textObj.initDimensions()
+    textObj.setCoords()
+    canvas.requestRenderAll()
+
+    // Update the annotation store with new settings (includes styles for rich text)
+    if (annotationId) {
+      // Include 'styles' property for rich text serialization
+      const json = JSON.stringify(
+        (textObj as unknown as { toObject: (props: string[]) => object }).toObject(['styles'])
+      )
+      onAnnotationUpdateRef.current(annotationId, json)
+    }
+  }, [toolSettings, canvasReady])
+
+  // Sync toolbar when text object is selected or selection within text changes
+  useEffect(() => {
+    if (!canvasReady) return
+    const canvas = fabricRef.current
+    if (!canvas) return
+
+    // Handle object selection
+    const handleSelectionCreated = (e: { selected?: FabricObject[] }) => {
+      const selected = e.selected?.[0]
+      if (selected && selected.type === 'i-text') {
+        syncToolbarWithText(selected as IText)
+      }
+    }
+
+    const handleSelectionUpdated = (e: { selected?: FabricObject[] }) => {
+      const selected = e.selected?.[0]
+      if (selected && selected.type === 'i-text') {
+        syncToolbarWithText(selected as IText)
+      }
+    }
+
+    canvas.on('selection:created', handleSelectionCreated)
+    canvas.on('selection:updated', handleSelectionUpdated)
+
+    return () => {
+      canvas.off('selection:created', handleSelectionCreated)
+      canvas.off('selection:updated', handleSelectionUpdated)
+    }
+  }, [canvasReady, syncToolbarWithText])
+
   // Handle mouse events for tools - registered ONCE, reads current tool from refs
   useEffect(() => {
     // Wait for canvas to be fully initialized before registering handlers
@@ -198,25 +379,33 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     const canvas = fabricRef.current
     if (!canvas) return
 
+    console.log('[AnnotationLayer] Registering Fabric.js event handlers for page', pageNumber, ', activeTool:', activeTool)
+
     // Handle path created (draw tool)
     const handlePathCreated = (e: { path?: FabricObject }) => {
       const currentTool = activeToolRef.current
       if (e.path && currentTool === 'draw') {
         const json = JSON.stringify(e.path.toObject())
-        onAnnotationAddRef.current(json, 'draw')
+        const annotationId = onAnnotationAddRef.current(json, 'draw')
+        ;(e.path as unknown as { annotationId: string }).annotationId = annotationId
       }
     }
 
     // Handle mouse down for shape tools
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleMouseDown = (e: any) => {
+      console.log('[AnnotationLayer] Fabric mouse:down event received:', e)
       const pointer = e.pointer || e.scenePoint || e.absolutePointer
-      if (!pointer) return
+      if (!pointer) {
+        console.log('[AnnotationLayer] No pointer in event, trying viewportPoint')
+        return
+      }
 
       const { x, y } = pointer
       const clickedObject = e.target
       const currentTool = activeToolRef.current
       const settings = toolSettingsRef.current
+      console.log('[AnnotationLayer] Tool:', currentTool, 'Pointer:', { x, y }, 'Target:', clickedObject?.type)
 
       switch (currentTool) {
         case 'text':
@@ -226,6 +415,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
             return
           }
           // Create new text box only when clicking on empty space
+          console.log('[AnnotationLayer] Creating text box at:', { x, y })
           createTextBox(canvas, x, y, settings)
           break
 
@@ -241,9 +431,9 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
         case 'signature':
           // Store click position for signature placement
-          (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition = { x, y }
+          ;(window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition = { x, y }
           // Ensure THIS page's addSignatureImage is used (not another page's)
-          (window as unknown as { addSignatureToCanvas?: (url: string) => void }).addSignatureToCanvas = (dataUrl: string) => {
+          ;(window as unknown as { addSignatureToCanvas?: (url: string) => void }).addSignatureToCanvas = (dataUrl: string) => {
             const pos = (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
             insertSignatureImage(canvas, dataUrl, pos?.x ?? x, pos?.y ?? y)
           }
@@ -313,8 +503,9 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         cvs.setActiveObject(fabricImage)
         cvs.renderAll()
 
-        const json = JSON.stringify(fabricImage.toObject(['src']))
-        onAnnotationAddRef.current(json, 'image')
+        const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
+        const annotationId = onAnnotationAddRef.current(json, 'image')
+        ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
       }
       img.src = dataUrl
     }
@@ -350,8 +541,9 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         cvs.setActiveObject(fabricImage)
         cvs.renderAll()
 
-        const json = JSON.stringify(fabricImage.toObject(['src']))
-        onAnnotationAddRef.current(json, 'signature')
+        const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
+        const annotationId = onAnnotationAddRef.current(json, 'signature')
+        ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
 
         // Clear pending position
         delete (window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition
@@ -400,7 +592,8 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       if (rect.width && rect.height && rect.width > 5 && rect.height > 5) {
         const json = JSON.stringify(rect.toObject())
         const type = rect.fill === '#000000' ? 'redact' : 'rectangle'
-        onAnnotationAddRef.current(json, type)
+        const annotationId = onAnnotationAddRef.current(json, type)
+        ;(rect as unknown as { annotationId: string }).annotationId = annotationId
       } else {
         canvas.remove(rect)
       }
@@ -413,9 +606,16 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     // Handle object modification - save changes to annotation
     const handleObjectModified = (e: { target?: FabricObject }) => {
       if (!e.target) return
-      // For now, just log - full update would need annotation ID tracking
-      const json = JSON.stringify(e.target.toObject())
-      console.log('Object modified:', json)
+      const annotationId = (e.target as unknown as { annotationId?: string }).annotationId
+      if (annotationId) {
+        // Include 'styles' for text objects (rich text), 'src' for images
+        const extraProps = e.target.type === 'i-text' ? ['styles'] :
+          e.target.type === 'image' ? ['src'] : []
+        const json = JSON.stringify(
+          (e.target as unknown as { toObject: (props: string[]) => object }).toObject(extraProps)
+        )
+        onAnnotationUpdateRef.current(annotationId, json)
+      }
     }
 
     // Handle delete key
@@ -431,12 +631,17 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
     // Helper: Create text box
     const createTextBox = (cvs: Canvas, x: number, y: number, settings: ToolSettings) => {
+      console.log('[AnnotationLayer] createTextBox called, creating IText at:', { x, y })
+
       const text = new IText('', {
         left: x,
         top: y,
         fontSize: settings.fontSize,
         fontFamily: settings.fontFamily,
         fill: settings.color,
+        fontWeight: settings.bold ? 'bold' : 'normal',
+        fontStyle: settings.italic ? 'italic' : 'normal',
+        underline: settings.underline,
         editable: true,
         selectable: true,
         hasControls: true,
@@ -453,9 +658,13 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
       let isNewTextBox = true
 
+      console.log('[AnnotationLayer] Adding IText to canvas')
       cvs.add(text)
+      console.log('[AnnotationLayer] Setting active object')
       cvs.setActiveObject(text)
+      console.log('[AnnotationLayer] Entering editing mode')
       text.enterEditing()
+      console.log('[AnnotationLayer] IText is now in editing mode, objects on canvas:', cvs.getObjects().length)
 
       text.on('editing:exited', () => {
         if (!text.text || text.text.trim() === '') {
@@ -464,9 +673,13 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           return
         }
 
-        const json = JSON.stringify(text.toObject())
+        // Include 'styles' for rich text support
+        const json = JSON.stringify(
+          (text as unknown as { toObject: (props: string[]) => object }).toObject(['styles'])
+        )
         if (isNewTextBox) {
-          onAnnotationAddRef.current(json, 'text')
+          const annotationId = onAnnotationAddRef.current(json, 'text')
+          ;(text as unknown as { annotationId: string }).annotationId = annotationId
           isNewTextBox = false
         }
         cvs.renderAll()
@@ -486,8 +699,18 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         fill: isRedact ? '#000000' : 'transparent',
         stroke: isRedact ? '#000000' : settings.color,
         strokeWidth: isRedact ? 0 : settings.strokeWidth,
+        strokeUniform: true, // Keep stroke width consistent during resize
         selectable: true,
         evented: true,
+        // Explicit origin for consistent behavior
+        originX: 'left',
+        originY: 'top',
+        // Control styling
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderColor: '#2563eb',
       })
 
       cvs.add(rect)
@@ -556,8 +779,9 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       canvas.setActiveObject(fabricImage)
       canvas.renderAll()
 
-      const json = JSON.stringify(fabricImage.toObject(['src']))
-      onAnnotationAddRef.current(json, 'signature')
+      const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
+      const annotationId = onAnnotationAddRef.current(json, 'signature')
+      ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
     }
     img.src = dataUrl
   }, [width, height, scale])
@@ -575,6 +799,18 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
     const canvas = fabricRef.current
     if (!canvas) return
+
+    // Create a key from annotations to check if they actually changed
+    const annotationsKey = annotations.map(a => a.id + ':' + a.fabricJSON.length).join('|')
+
+    // Skip if annotations haven't changed
+    if (loadedAnnotationsRef.current === annotationsKey) {
+      console.log('[AnnotationLayer] Skipping annotation reload - unchanged')
+      return
+    }
+
+    console.log('[AnnotationLayer] Loading annotations for page', pageNumber, '- count:', annotations.length)
+    loadedAnnotationsRef.current = annotationsKey
 
     // Clear existing objects
     canvas.clear()
@@ -607,6 +843,8 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
             cornerStyle: 'circle',
             transparentCorners: false,
           })
+          // Store annotation ID for later updates
+          ;(text as unknown as { annotationId: string }).annotationId = annotation.id
           canvas.add(text)
         } else if (objType === 'rect') {
           const rect = new Rect({
@@ -614,7 +852,16 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
             selectable: true,
             hasControls: true,
             hasBorders: true,
+            strokeUniform: true,
+            originX: 'left',
+            originY: 'top',
+            cornerColor: '#2563eb',
+            cornerSize: 8,
+            cornerStyle: 'circle',
+            transparentCorners: false,
+            borderColor: '#2563eb',
           })
+          ;(rect as unknown as { annotationId: string }).annotationId = annotation.id
           canvas.add(rect)
         } else if (objType === 'path') {
           // Draw tool creates Path objects
@@ -623,12 +870,19 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
             selectable: true,
             hasControls: true,
             hasBorders: true,
+            cornerColor: '#2563eb',
+            cornerSize: 8,
+            cornerStyle: 'circle',
+            transparentCorners: false,
+            borderColor: '#2563eb',
           })
+          ;(path as unknown as { annotationId: string }).annotationId = annotation.id
           canvas.add(path)
         } else if (objType === 'image') {
           // Image annotations (signatures and inserted images)
           const img = new window.Image()
           img.crossOrigin = 'anonymous'
+          const annotationIdForImage = annotation.id // Capture for closure
           img.onload = () => {
             const fabricImage = new FabricImage(img, {
               ...restData,
@@ -641,6 +895,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
               transparentCorners: false,
               borderColor: '#2563eb',
             })
+            ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationIdForImage
             canvas.add(fabricImage)
             canvas.renderAll()
           }
@@ -654,6 +909,28 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     canvas.renderAll()
   }, [pageNumber, annotations, canvasReady])
 
+  // Update wrapper pointer-events when tool changes to textSelect
+  useEffect(() => {
+    if (!canvasReady) return
+    const canvas = fabricRef.current
+    if (!canvas) return
+
+    const wrapper = canvas.wrapperEl
+    const upperCanvas = canvas.upperCanvasEl
+
+    // Disable pointer events on annotation layer when textSelect tool is active
+    // This allows the text layer underneath to receive events
+    const shouldPassThrough = activeTool === 'textSelect'
+
+    if (wrapper) {
+      wrapper.style.pointerEvents = shouldPassThrough ? 'none' : 'auto'
+      wrapper.style.zIndex = shouldPassThrough ? '5' : '20'
+    }
+    if (upperCanvas) {
+      upperCanvas.style.pointerEvents = shouldPassThrough ? 'none' : 'auto'
+    }
+  }, [activeTool, canvasReady])
+
   // Calculate display dimensions
   const displayWidth = width * scale
   const displayHeight = height * scale
@@ -661,13 +938,13 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
   return (
     <canvas
       ref={canvasRef}
-      width={displayWidth * dpr}
-      height={displayHeight * dpr}
+      width={displayWidth}
+      height={displayHeight}
       className="absolute top-0 left-0 z-10"
       style={{
         width: displayWidth,
         height: displayHeight,
-        pointerEvents: 'auto',
+        pointerEvents: activeTool === 'textSelect' ? 'none' : 'auto',
       }}
     />
   )

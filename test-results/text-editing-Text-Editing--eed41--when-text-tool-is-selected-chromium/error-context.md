@@ -1,0 +1,168 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - link "I Incrible" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e7]: I
+          - generic [ref=e8]: Incrible
+        - button [ref=e9]:
+          - img [ref=e10]
+      - navigation [ref=e12]:
+        - link "Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e14]:
+            - img [ref=e17]
+            - generic [ref=e23]: Dashboard
+        - link "Videos" [ref=e24] [cursor=pointer]:
+          - /url: /dashboard/projects
+          - generic [ref=e25]:
+            - img [ref=e27]
+            - generic [ref=e30]: Videos
+        - link "Documents" [ref=e31] [cursor=pointer]:
+          - /url: /dashboard/documents
+          - generic [ref=e32]:
+            - img [ref=e34]
+            - generic [ref=e39]: Documents
+        - link "Users" [ref=e40] [cursor=pointer]:
+          - /url: /dashboard/team
+          - generic [ref=e41]:
+            - img [ref=e43]
+            - generic [ref=e49]: Users
+        - link "Settings" [ref=e50] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - generic [ref=e51]:
+            - img [ref=e53]
+            - generic [ref=e57]: Settings
+        - link "Prompts" [ref=e58] [cursor=pointer]:
+          - /url: /dashboard/prompts
+          - generic [ref=e59]:
+            - img [ref=e61]
+            - generic [ref=e65]: Prompts
+        - link "API Analytics" [ref=e66] [cursor=pointer]:
+          - /url: /dashboard/admin/analytics
+          - generic [ref=e67]:
+            - img [ref=e69]
+            - generic [ref=e72]: API Analytics
+        - link "Recruit" [ref=e73] [cursor=pointer]:
+          - /url: /dashboard/admin/recruit
+          - generic [ref=e74]:
+            - img [ref=e76]
+            - generic [ref=e80]: Recruit
+      - generic [ref=e82]:
+        - button "Open user menu" [ref=e84] [cursor=pointer]:
+          - img "Jonghyun Oh's logo" [ref=e87]
+        - generic [ref=e89]:
+          - paragraph [ref=e90]: Jonghyun Oh
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - paragraph [ref=e94]: Admin
+    - main [ref=e95]:
+      - generic [ref=e97]:
+        - generic [ref=e98]:
+          - heading "Dashboard" [level=1] [ref=e99]
+          - paragraph [ref=e100]: Welcome back! Here's your overview.
+        - generic [ref=e101]:
+          - link [ref=e102] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - generic [ref=e103]:
+              - img [ref=e104]
+              - img [ref=e109]
+          - button "Search... K" [ref=e111]:
+            - img [ref=e112]
+            - generic [ref=e115]: Search...
+            - generic [ref=e116]:
+              - img [ref=e117]
+              - generic [ref=e119]: K
+          - button [ref=e120]:
+            - img [ref=e121]
+      - generic [ref=e126]:
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - heading "Welcome to Dashboard" [level=2] [ref=e132]
+            - paragraph [ref=e133]: Loading your statistics...
+          - link "New Project" [ref=e135] [cursor=pointer]:
+            - /url: /dashboard/projects?new=true
+            - button "New Project" [ref=e136]:
+              - img [ref=e137]
+              - text: New Project
+        - generic [ref=e138]:
+          - generic [ref=e139]:
+            - generic [ref=e140]:
+              - heading "Active Jobs" [level=3] [ref=e142]
+              - img [ref=e144]
+            - img [ref=e148]
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - heading "In Queue" [level=3] [ref=e153]
+              - img [ref=e155]
+            - img [ref=e160]
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - heading "Completed Today" [level=3] [ref=e165]
+              - img [ref=e167]
+            - img [ref=e172]
+          - generic [ref=e174]:
+            - generic [ref=e175]:
+              - heading "Total Projects" [level=3] [ref=e177]
+              - img [ref=e179]
+            - img [ref=e183]
+          - generic [ref=e185]:
+            - generic [ref=e187]:
+              - heading "Quick Actions" [level=3] [ref=e188]
+              - paragraph [ref=e189]: Common tasks
+            - generic [ref=e191]:
+              - link "Upload New Video" [ref=e192] [cursor=pointer]:
+                - /url: /dashboard/projects?new=true
+                - button "Upload New Video" [ref=e193]:
+                  - img [ref=e194]
+                  - generic [ref=e197]: Upload New Video
+              - link "View Transcriptions" [ref=e198] [cursor=pointer]:
+                - /url: /dashboard/projects
+                - button "View Transcriptions" [ref=e199]:
+                  - img [ref=e200]
+                  - generic [ref=e203]: View Transcriptions
+              - link "View Translations" [ref=e204] [cursor=pointer]:
+                - /url: /dashboard/projects
+                - button "View Translations" [ref=e205]:
+                  - img [ref=e206]
+                  - generic [ref=e209]: View Translations
+              - link "View Analytics" [ref=e210] [cursor=pointer]:
+                - /url: /dashboard/analytics
+                - button "View Analytics" [ref=e211]:
+                  - img [ref=e212]
+                  - generic [ref=e214]: View Analytics
+          - generic [ref=e215]:
+            - generic [ref=e217]:
+              - heading "Recent Activity" [level=3] [ref=e218]
+              - paragraph [ref=e219]: Latest updates across all projects
+            - generic [ref=e220]:
+              - img [ref=e223]
+              - link "View all projects" [ref=e225] [cursor=pointer]:
+                - /url: /dashboard/projects
+                - button "View all projects" [ref=e226]:
+                  - text: View all projects
+                  - img [ref=e227]
+        - generic [ref=e229]:
+          - generic [ref=e230]:
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - heading "Transcription Queue" [level=3] [ref=e233]
+                - paragraph [ref=e234]: Real-time processing status
+              - img [ref=e236]
+            - img [ref=e242]
+          - generic [ref=e244]:
+            - generic [ref=e245]:
+              - generic [ref=e246]:
+                - heading "Translation Queue" [level=3] [ref=e247]
+                - paragraph [ref=e248]: Multi-language processing
+              - img [ref=e250]
+            - img [ref=e256]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e263] [cursor=pointer]:
+    - img [ref=e264]
+  - alert [ref=e267]
+```

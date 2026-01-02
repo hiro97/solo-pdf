@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useEffect, useRef, useState, useCallback } from "react"
-import type { PDFDocumentProxy } from "pdfjs-dist"
+import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
+import { TextLayer } from "pdfjs-dist"
 import type { ToolType, ToolSettings, PageDimensions, Annotation } from "./types"
 import { AnnotationLayer } from "./AnnotationLayer"
 
@@ -12,11 +13,12 @@ interface PageRendererProps {
   activeTool: ToolType
   toolSettings: ToolSettings
   annotations: Annotation[]
-  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => void
+  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => string
   onAnnotationUpdate: (pageNumber: number, id: string, fabricJSON: string) => void
   onAnnotationRemove: (pageNumber: number, id: string) => void
   onSignatureRequest?: () => void
   onPageVisible?: (pageNumber: number, isIntersecting: boolean) => void
+  onStyleSync?: (styles: Partial<ToolSettings>) => void
   isVisible?: boolean
 }
 
@@ -32,14 +34,17 @@ export const PageRenderer = React.memo(function PageRenderer({
   onAnnotationRemove,
   onSignatureRequest,
   onPageVisible,
+  onStyleSync,
   isVisible = true,
 }: PageRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const textLayerRef = useRef<HTMLDivElement>(null)
   const [isRendering, setIsRendering] = useState(false)
   const [pageDimensions, setPageDimensions] = useState<PageDimensions | null>(null)
   const [hasRendered, setHasRendered] = useState(false)
   const renderTaskRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pageRef = useRef<PDFPageProxy | null>(null)
 
   // Get page dimensions (needed for placeholder sizing)
   const getPageDimensions = useCallback(async () => {
@@ -69,6 +74,7 @@ export const PageRenderer = React.memo(function PageRenderer({
 
     try {
       const page = await pdfDoc.getPage(pageNumber)
+      pageRef.current = page
       const viewport = page.getViewport({ scale })
 
       const canvas = canvasRef.current
@@ -102,6 +108,26 @@ export const PageRenderer = React.memo(function PageRenderer({
         viewport,
         canvas,
       }).promise
+
+      // Render text layer for text selection
+      if (textLayerRef.current) {
+        // Clear previous text layer content safely
+        while (textLayerRef.current.firstChild) {
+          textLayerRef.current.removeChild(textLayerRef.current.firstChild)
+        }
+
+        // Set text layer dimensions to match viewport exactly
+        textLayerRef.current.style.width = `${viewport.width}px`
+        textLayerRef.current.style.height = `${viewport.height}px`
+
+        const textContent = await page.getTextContent()
+        const textLayer = new TextLayer({
+          textContentSource: textContent,
+          container: textLayerRef.current,
+          viewport: viewport,
+        })
+        await textLayer.render()
+      }
 
       setHasRendered(true)
       setIsRendering(false)
@@ -156,8 +182,8 @@ export const PageRenderer = React.memo(function PageRenderer({
 
   // Handle annotation callbacks with pageNumber
   const handleAnnotationAdd = useCallback(
-    (fabricJSON: string, type: ToolType) => {
-      onAnnotationAdd(pageNumber, fabricJSON, type)
+    (fabricJSON: string, type: ToolType): string => {
+      return onAnnotationAdd(pageNumber, fabricJSON, type)
     },
     [onAnnotationAdd, pageNumber]
   )
@@ -198,8 +224,18 @@ export const PageRenderer = React.memo(function PageRenderer({
           {/* PDF Canvas (read-only background) */}
           <canvas
             ref={canvasRef}
-            className="block"
+            className="absolute top-0 left-0"
             style={{ pointerEvents: 'none' }}
+          />
+
+          {/* Text Layer for PDF text selection - only interactive when textSelect tool is active */}
+          <div
+            ref={textLayerRef}
+            className="textLayer absolute top-0 left-0"
+            style={{
+              pointerEvents: activeTool === 'textSelect' ? 'auto' : 'none',
+              zIndex: activeTool === 'textSelect' ? 30 : 5,
+            }}
           />
 
           {/* Annotation Layer (interactive Fabric.js canvas) */}
@@ -216,6 +252,7 @@ export const PageRenderer = React.memo(function PageRenderer({
               onAnnotationUpdate={handleAnnotationUpdate}
               onAnnotationRemove={handleAnnotationRemove}
               onSignatureRequest={onSignatureRequest}
+              onStyleSync={onStyleSync}
             />
           )}
 

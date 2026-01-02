@@ -17,6 +17,7 @@ import {
   MousePointer,
   FolderOpen,
   ImagePlus,
+  TextCursor,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -247,7 +248,20 @@ export function EditorToolbar({
                 <MousePointer className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Select</TooltipContent>
+            <TooltipContent>Select Annotations</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === "textSelect" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => onToolChange("textSelect")}
+              >
+                <TextCursor className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Select Text (Copy)</TooltipContent>
           </Tooltip>
 
           <Tooltip>

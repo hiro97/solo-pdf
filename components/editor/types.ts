@@ -9,7 +9,7 @@ export type ToolType =
   | 'rectangle'
   | 'circle'
   | 'line'
-  | 'arrow'
+  | 'textSelect'  // Select and copy text from PDF
   | 'signature'
   | 'image'
   | 'redact'
@@ -47,6 +47,10 @@ export interface ToolSettings {
   strokeWidth: number
   fontSize: number
   fontFamily: string
+  // Text formatting
+  bold: boolean
+  italic: boolean
+  underline: boolean
 }
 
 export const DEFAULT_TOOL_SETTINGS: ToolSettings = {
@@ -54,6 +58,9 @@ export const DEFAULT_TOOL_SETTINGS: ToolSettings = {
   strokeWidth: 2,
   fontSize: 16,
   fontFamily: 'Helvetica',
+  bold: false,
+  italic: false,
+  underline: false,
 }
 
 // Annotation types for Fabric.js objects
