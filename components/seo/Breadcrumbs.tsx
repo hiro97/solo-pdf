@@ -14,7 +14,7 @@ interface BreadcrumbsProps {
 }
 
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
-  const allItems = [{ label: "홈", href: "/" }, ...items]
+  const allItems = [{ label: "Home", href: "/" }, ...items]
   const jsonLdItems = allItems.map((item) => ({
     name: item.label,
     url: `${siteConfig.url}${item.href}`,
@@ -32,7 +32,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                 <Link
                   href={item.href}
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  aria-label="홈으로"
+                  aria-label="Go to homepage"
                 >
                   <Home className="h-4 w-4" />
                 </Link>

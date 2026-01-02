@@ -2,6 +2,8 @@
 
 import { EyeOff, ShieldCheck, Eraser, Lock, FileWarning } from "lucide-react"
 import { ToolPageLayout } from "@/components/tools/ToolPageLayout"
+import { HowToJsonLd } from "@/components/seo/JsonLd"
+import { RelatedTools } from "@/components/seo/RelatedTools"
 
 const steps = [
   {
@@ -18,6 +20,21 @@ const steps = [
     number: "3",
     title: "Download",
     description: "Get your redacted PDF",
+  },
+]
+
+const howToSteps = [
+  {
+    name: "Upload your PDF",
+    text: "Click the upload button or drag and drop the PDF document containing sensitive information.",
+  },
+  {
+    name: "Mark areas to redact",
+    text: "Draw rectangles over text or images you want to permanently hide. Choose your redaction color.",
+  },
+  {
+    name: "Download redacted PDF",
+    text: "Preview your redactions, then download the document with sensitive content permanently removed.",
   },
 ]
 
@@ -42,13 +59,22 @@ const features = [
 
 export default function RedactPdfPage() {
   return (
-    <ToolPageLayout
-      title="Redact PDF"
-      subtitle="Hide sensitive information permanently"
-      description="Cover confidential data with black boxes. Perfect for legal documents, contracts, and personal information protection."
-      icon={EyeOff}
-      steps={steps}
-      features={features}
-    />
+    <>
+      <HowToJsonLd
+        name="How to Redact PDF Documents Online"
+        description="Learn how to permanently remove sensitive information from PDF documents using SOLO PDF's free online redaction tool."
+        steps={howToSteps}
+      />
+      <ToolPageLayout
+        title="Redact PDF"
+        subtitle="Hide sensitive information permanently"
+        description="Cover confidential data with black boxes. Perfect for legal documents, contracts, and personal information protection."
+        icon={EyeOff}
+        steps={steps}
+        features={features}
+      >
+        <RelatedTools currentPath="/redact-pdf" />
+      </ToolPageLayout>
+    </>
   )
 }

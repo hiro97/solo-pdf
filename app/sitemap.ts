@@ -8,12 +8,13 @@ export const dynamic = 'force-static'
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = siteConfig.url
 
-  // Static routes
+  // Static routes - prioritized for SEO
   const staticRoutes = [
-    "",
-    "/editor",
-    "/features",
-    "/pdf-editor",
+    "",                    // Homepage - priority 1.0
+    "/editor",             // Main editor - priority 0.9
+    "/free-pdf-editor",    // Primary keyword landing page
+    "/pdf-editor",         // Secondary keyword landing page
+    "/pdf-viewer",         // Tertiary keyword landing page
     "/merge-pdf",
     "/split-pdf",
     "/compress-pdf",
@@ -26,11 +27,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/support",
   ]
 
+  // Priority mapping for SEO - keyword landing pages get high priority
+  const getPriority = (route: string): number => {
+    if (route === "") return 1.0
+    if (route === "/free-pdf-editor") return 0.95  // Primary keyword
+    if (route === "/editor" || route === "/pdf-editor") return 0.9
+    if (route === "/pdf-viewer") return 0.85
+    if (route.includes("-pdf")) return 0.8  // Tool pages
+    return 0.6  // Other pages
+  }
+
   const staticPages: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: route === "" ? "daily" : "weekly",
-    priority: route === "" ? 1 : route === "/editor" ? 0.9 : 0.8,
+    priority: getPriority(route),
   }))
 
   // Blog posts

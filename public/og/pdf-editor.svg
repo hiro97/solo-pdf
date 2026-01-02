@@ -1,0 +1,20 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#4f46e5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1100" cy="100" r="200" fill="white" fill-opacity="0.1"/>
+  <circle cx="100" cy="530" r="150" fill="white" fill-opacity="0.1"/>
+  <rect x="60" y="60" width="1080" height="510" rx="24" fill="white" fill-opacity="0.95"/>
+
+  <text x="100" y="140" font-family="system-ui, sans-serif" font-size="28" font-weight="600" fill="#3b82f6">SOLO PDF</text>
+  <text x="100" y="280" font-family="Georgia, serif" font-size="72" font-weight="500" fill="#1f2937">PDF Editor</text>
+  <text x="100" y="360" font-family="system-ui, sans-serif" font-size="36" fill="#4b5563">Professional PDF Editing Online</text>
+  <text x="100" y="440" font-family="system-ui, sans-serif" font-size="24" fill="#6b7280">Add Text • Images • Signatures • Annotations</text>
+  <rect x="100" y="500" width="200" height="4" rx="2" fill="#3b82f6"/>
+  <text x="1040" y="530" font-family="system-ui, sans-serif" font-size="20" fill="#9ca3af" text-anchor="end">solo-pdf.com</text>
+</svg>
