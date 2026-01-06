@@ -38,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   const staticPages: MetadataRoute.Sitemap = staticRoutes.map((route) => ({
-    url: `${baseUrl}${route}`,
+    url: route === "" ? `${baseUrl}/` : `${baseUrl}${route}/`,
     lastModified: new Date(),
     changeFrequency: route === "" ? "daily" : "weekly",
     priority: getPriority(route),
@@ -47,7 +47,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Blog posts
   const posts = getAllPosts()
   const blogPages: MetadataRoute.Sitemap = posts.map((post) => ({
-    url: `${baseUrl}/blog/${post.slug}`,
+    url: `${baseUrl}/blog/${post.slug}/`,
     lastModified: new Date(post.date),
     changeFrequency: "monthly",
     priority: 0.6,
