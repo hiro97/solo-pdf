@@ -19,7 +19,10 @@ interface EditorCanvasProps {
   onSignatureRequest?: () => void
   onCurrentPageChange?: (pageNumber: number) => void
   onStyleSync?: (styles: Partial<ToolSettings>) => void
+  targetPage?: number | null
   className?: string
+  /** Document version - changes trigger re-render (e.g., after rotation) */
+  documentVersion?: number
 }
 
 export function EditorCanvas({
@@ -35,7 +38,9 @@ export function EditorCanvas({
   onSignatureRequest,
   onCurrentPageChange,
   onStyleSync,
+  targetPage,
   className,
+  documentVersion = 0,
 }: EditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // Track which pages are visible (with buffer)
@@ -53,6 +58,18 @@ export function EditorCanvas({
   useEffect(() => {
     onCurrentPageChange?.(currentPage)
   }, [currentPage, onCurrentPageChange])
+
+  // Scroll to target page when it changes (from sidebar click)
+  useEffect(() => {
+    if (targetPage && containerRef.current) {
+      const pageElement = containerRef.current.querySelector(
+        `[data-page-number="${targetPage}"]`
+      )
+      if (pageElement) {
+        pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }, [targetPage])
 
   // Track page visibility and update current page
   const handlePageVisible = useCallback(
@@ -91,14 +108,14 @@ export function EditorCanvas({
     <div
       ref={containerRef}
       className={cn(
-        "flex-1 overflow-auto bg-muted/30",
+        "flex-1 overflow-auto bg-muted/30 relative",
         className
       )}
     >
       <div className="flex flex-col items-center py-4 gap-4">
         {pages.map((pageNumber) => (
           <PageRenderer
-            key={pageNumber}
+            key={`${pageNumber}-v${documentVersion}`}
             pdfDoc={pdfDoc}
             pageNumber={pageNumber}
             scale={scale}

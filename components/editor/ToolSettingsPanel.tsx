@@ -22,6 +22,7 @@ interface ToolSettingsPanelProps {
 }
 
 const FONT_FAMILIES = [
+  { value: 'Nanum Gothic', label: 'Nanum Gothic' },
   { value: 'Helvetica', label: 'Helvetica' },
   { value: 'Times-Roman', label: 'Times Roman' },
   { value: 'Courier', label: 'Courier' },
@@ -57,21 +58,22 @@ export function ToolSettingsPanel({
   }
 
   return (
-    <div className="flex items-center gap-4 px-3 py-2 bg-muted/30 border-b">
+    <div className="flex items-center gap-3 px-3 py-1.5 editor-glass-panel border-b">
       {/* Color picker - shown for draw, text, rectangle, highlighter */}
       {['draw', 'text', 'rectangle', 'highlighter', 'circle', 'line', 'arrow'].includes(activeTool) && (
         <div className="flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground">Color</Label>
+          <Label className="mono-label">Color</Label>
           <div className="flex gap-1">
             {PRESET_COLORS.map((color) => (
               <button
                 key={color}
                 onClick={() => updateSetting('color', color)}
-                className={`w-6 h-6 rounded border-2 transition-all ${
+                className={cn(
+                  "w-5 h-5 rounded border-2 transition-all editor-transition",
                   settings.color === color
-                    ? 'border-primary scale-110'
-                    : 'border-transparent hover:scale-105'
-                }`}
+                    ? "color-picker-active"
+                    : "border-transparent hover:scale-105"
+                )}
                 style={{ backgroundColor: color }}
                 title={color}
               />
@@ -81,7 +83,7 @@ export function ToolSettingsPanel({
               type="color"
               value={settings.color}
               onChange={(e) => updateSetting('color', e.target.value)}
-              className="w-6 h-6 rounded border cursor-pointer"
+              className="w-5 h-5 rounded border cursor-pointer"
               title="Custom color"
             />
           </div>
@@ -91,18 +93,16 @@ export function ToolSettingsPanel({
       {/* Stroke width - shown for draw, rectangle, highlighter */}
       {['draw', 'rectangle', 'highlighter', 'circle', 'line', 'arrow'].includes(activeTool) && (
         <div className="flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground whitespace-nowrap">
-            Stroke
-          </Label>
+          <Label className="mono-label whitespace-nowrap">Stroke</Label>
           <Slider
             value={[settings.strokeWidth]}
             onValueChange={([value]) => updateSetting('strokeWidth', value)}
             min={1}
             max={10}
             step={1}
-            className="w-24"
+            className="w-20 [&_[role=slider]]:border-[hsl(var(--free))] [&_[role=slider]]:focus-visible:ring-[hsl(var(--free))]"
           />
-          <span className="text-xs text-muted-foreground w-4">
+          <span className="text-[10px] font-mono text-muted-foreground w-4">
             {settings.strokeWidth}
           </span>
         </div>
@@ -112,78 +112,76 @@ export function ToolSettingsPanel({
       {activeTool === 'text' && (
         <>
           {/* Bold, Italic, Underline toggle buttons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => updateSetting('bold', !settings.bold)}
               className={cn(
-                "h-8 w-8 p-0",
-                settings.bold && "bg-primary/20 text-primary"
+                "h-7 w-7 p-0 editor-transition",
+                settings.bold && "tool-active"
               )}
               title="Bold (Ctrl+B)"
             >
-              <Bold className="h-4 w-4" />
+              <Bold className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => updateSetting('italic', !settings.italic)}
               className={cn(
-                "h-8 w-8 p-0",
-                settings.italic && "bg-primary/20 text-primary"
+                "h-7 w-7 p-0 editor-transition",
+                settings.italic && "tool-active"
               )}
               title="Italic (Ctrl+I)"
             >
-              <Italic className="h-4 w-4" />
+              <Italic className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => updateSetting('underline', !settings.underline)}
               className={cn(
-                "h-8 w-8 p-0",
-                settings.underline && "bg-primary/20 text-primary"
+                "h-7 w-7 p-0 editor-transition",
+                settings.underline && "tool-active"
               )}
               title="Underline (Ctrl+U)"
             >
-              <Underline className="h-4 w-4" />
+              <Underline className="h-3.5 w-3.5" />
             </Button>
           </div>
 
-          <div className="w-px h-6 bg-border" /> {/* Separator */}
+          <div className="w-px h-5 bg-border/50" /> {/* Separator */}
 
           {/* Font size */}
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">
-              Size
-            </Label>
+            <Label className="mono-label whitespace-nowrap">Size</Label>
             <Slider
               value={[settings.fontSize]}
               onValueChange={([value]) => updateSetting('fontSize', value)}
               min={8}
               max={72}
               step={2}
-              className="w-24"
+              className="w-20 [&_[role=slider]]:border-[hsl(var(--free))] [&_[role=slider]]:focus-visible:ring-[hsl(var(--free))]"
             />
-            <span className="text-xs text-muted-foreground w-6">
+            <span className="text-[10px] font-mono text-muted-foreground w-5">
               {settings.fontSize}
             </span>
           </div>
 
           {/* Font family */}
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">Font</Label>
+            <Label className="mono-label">Font</Label>
             <Select
               value={settings.fontFamily}
               onValueChange={(value) => updateSetting('fontFamily', value)}
             >
-              <SelectTrigger className="w-32 h-8 text-xs">
+              <SelectTrigger className="w-28 h-6 text-xs font-mono border-0 bg-muted/30 hover:bg-muted/50">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {FONT_FAMILIES.map((font) => (
-                  <SelectItem key={font.value} value={font.value}>
+                  <SelectItem key={font.value} value={font.value} className="text-xs">
                     {font.label}
                   </SelectItem>
                 ))}
@@ -195,7 +193,7 @@ export function ToolSettingsPanel({
 
       {/* Redact tool has no settings - uses black fill */}
       {activeTool === 'redact' && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[10px] font-mono text-muted-foreground">
           Click and drag to redact areas (black fill)
         </span>
       )}

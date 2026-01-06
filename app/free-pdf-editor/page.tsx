@@ -16,7 +16,6 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { FileSelectModal } from "@/components/shared/FileSelectModal"
 import {
   SoftwareApplicationJsonLd,
@@ -156,9 +155,12 @@ export default function FreePdfEditorPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium mb-6">
+            {/* FREE Badge - Prominent green */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6
+                            bg-[hsl(var(--free))] text-white text-sm font-mono uppercase tracking-wider
+                            shadow-[0_0_20px_hsl(var(--free-glow))]">
               <Check className="w-4 h-4" />
               100% Free - No Signup Required
             </div>
@@ -180,8 +182,11 @@ export default function FreePdfEditorPage() {
             <div className="flex flex-wrap justify-center gap-6 mt-8">
               {features.slice(0, 4).map((feature, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <feature.icon className="w-4 h-4 text-primary" />
-                  <span>{feature.title}</span>
+                  <div className="w-6 h-6 rounded-md bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                  flex items-center justify-center">
+                    <feature.icon className="w-3.5 h-3.5 text-[hsl(var(--free))]" />
+                  </div>
+                  <span className="font-mono text-xs uppercase tracking-wider">{feature.title}</span>
                 </div>
               ))}
             </div>
@@ -197,7 +202,17 @@ export default function FreePdfEditorPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Section indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                              shadow-[0_0_6px_hsl(var(--free-glow))]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                All Tools Free
+              </span>
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-serif mb-4">
               All PDF Tools, Completely Free
             </h2>
@@ -213,14 +228,18 @@ export default function FreePdfEditorPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Link href={tool.href}>
-                  <div className="group p-6 rounded-xl bg-card border hover:border-primary/50 hover:shadow-lg transition-all h-full">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <tool.icon className="w-6 h-6 text-primary" />
+                  <div className="group p-6 rounded-xl bg-card border
+                                  hover:border-[hsl(var(--free)/0.5)] hover:shadow-lg transition-all h-full">
+                    <div className="w-12 h-12 rounded-lg bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                    flex items-center justify-center mb-4
+                                    group-hover:bg-[hsl(var(--free))] group-hover:border-[hsl(var(--free))]
+                                    transition-all duration-200">
+                      <tool.icon className="w-6 h-6 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
                     </div>
-                    <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                    <h3 className="font-semibold mb-2 group-hover:text-[hsl(var(--free))] transition-colors">
                       {tool.title}
                     </h3>
                     <p className="text-sm text-muted-foreground">{tool.description}</p>
@@ -240,7 +259,17 @@ export default function FreePdfEditorPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Section indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                              shadow-[0_0_6px_hsl(var(--free-glow))]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                Why Free
+              </span>
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-serif mb-4">
               Why SOLO PDF is Free
             </h2>
@@ -253,14 +282,16 @@ export default function FreePdfEditorPage() {
             {features.map((feature, i) => (
               <motion.div
                 key={feature.title}
-                className="flex gap-4"
+                className="flex gap-4 p-5 rounded-xl border bg-card/50
+                           hover:border-[hsl(var(--free)/0.3)] transition-colors"
                 initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <feature.icon className="w-6 h-6 text-primary" />
+                <div className="shrink-0 w-12 h-12 rounded-lg bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                flex items-center justify-center">
+                  <feature.icon className="w-6 h-6 text-[hsl(var(--free))]" />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">{feature.title}</h3>
@@ -280,7 +311,17 @@ export default function FreePdfEditorPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Section indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                              shadow-[0_0_6px_hsl(var(--free-glow))]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                How It Works
+              </span>
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-serif mb-4">
               How to Edit PDFs for Free
             </h2>
@@ -293,17 +334,26 @@ export default function FreePdfEditorPage() {
             {howToSteps.map((step, i) => (
               <motion.div
                 key={i}
-                className="text-center"
+                className="text-center relative"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-4">
-                  {i + 1}
+                {/* Connector line */}
+                {i < howToSteps.length - 1 && (
+                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-[hsl(var(--free)/0.2)]" />
+                )}
+
+                <div className="relative z-10">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4
+                                  bg-[hsl(var(--free))] text-white text-2xl font-serif
+                                  shadow-[0_0_20px_hsl(var(--free-glow))]">
+                    {i + 1}
+                  </div>
+                  <h3 className="font-semibold mb-2">{step.name}</h3>
+                  <p className="text-sm text-muted-foreground">{step.text}</p>
                 </div>
-                <h3 className="font-semibold mb-2">{step.name}</h3>
-                <p className="text-sm text-muted-foreground">{step.text}</p>
               </motion.div>
             ))}
           </div>
@@ -318,7 +368,17 @@ export default function FreePdfEditorPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Section indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                              shadow-[0_0_6px_hsl(var(--free-glow))]" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                FAQ
+              </span>
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-serif mb-4">
               Frequently Asked Questions
             </h2>
@@ -331,11 +391,11 @@ export default function FreePdfEditorPage() {
             {faqs.map((faq, i) => (
               <motion.div
                 key={i}
-                className="p-6 rounded-xl bg-card border"
+                className="p-6 rounded-xl bg-card border hover:border-[hsl(var(--free)/0.3)] transition-colors"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
               >
                 <h3 className="font-semibold mb-2">{faq.question}</h3>
                 <p className="text-sm text-muted-foreground">{faq.answer}</p>
@@ -346,24 +406,37 @@ export default function FreePdfEditorPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-16 bg-primary text-primary-foreground">
+      <section className="py-16 bg-[hsl(var(--free))]">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="text-3xl md:text-4xl font-serif mb-4">
+            {/* Section indicator - white version */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-white/80">
+                Get Started
+              </span>
+            </div>
+
+            <h2 className="text-3xl md:text-4xl font-serif mb-4 text-white">
               Start Editing PDFs for Free
             </h2>
-            <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+            <p className="text-white/80 mb-8 max-w-2xl mx-auto">
               No signup, no upload, no limits. Just open your PDF and start editing.
             </p>
             <Link href="/editor">
-              <Button size="lg" variant="secondary" className="gap-2">
+              <button className="inline-flex items-center gap-2 px-6 py-3
+                                 bg-white text-[hsl(var(--free))] rounded-lg
+                                 font-mono text-sm uppercase tracking-wider
+                                 hover:bg-white/90 transition-all duration-200
+                                 hover:-translate-y-0.5 shadow-lg">
                 Open PDF Editor
                 <ArrowRight className="w-4 h-4" />
-              </Button>
+              </button>
             </Link>
           </motion.div>
         </div>

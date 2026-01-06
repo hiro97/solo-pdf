@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Nanum Gothic";
+  src: url("/fonts/NanumGothic-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -38,6 +46,11 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
+
+    /* FREE accent - vibrant green */
+    --free: 152 82% 39%;
+    --free-foreground: 0 0% 100%;
+    --free-glow: 152 82% 39% / 0.3;
   }
 
   .dark {
@@ -74,6 +87,11 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
+
+    /* FREE accent (dark mode) */
+    --free: 152 76% 50%;
+    --free-foreground: 0 0% 100%;
+    --free-glow: 152 76% 50% / 0.4;
   }
 }
 
@@ -133,29 +151,155 @@
     }
   }
 
-  /* PDF.js Text Layer - for text selection */
+  /* Ticker scroll animation */
+  .ticker-scroll {
+    animation: ticker-scroll 30s linear infinite;
+  }
+
+  @keyframes ticker-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .ticker-scroll:hover {
+    animation-play-state: paused;
+  }
+
+  /* Terminal typing cursor */
+  .terminal-cursor {
+    animation: cursor-blink 1s step-end infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* Dense grid cells */
+  .dense-cell {
+    @apply border border-border/50 p-3 transition-colors;
+  }
+
+  .dense-cell:hover {
+    @apply bg-muted/50;
+  }
+
+  /* Free badge glow */
+  .free-glow {
+    box-shadow: 0 0 20px hsl(var(--free-glow)), 0 0 40px hsl(var(--free-glow));
+  }
+
+  /* Editor glassmorphism panel */
+  .editor-glass-panel {
+    @apply backdrop-blur-xl border border-border/50;
+    background: hsl(0 0% 100% / 0.85);
+  }
+
+  .dark .editor-glass-panel {
+    background: hsl(0 0% 0% / 0.6);
+  }
+
+  /* Tool active state with green accent */
+  .tool-active {
+    background: hsl(var(--free) / 0.15) !important;
+    color: hsl(var(--free)) !important;
+    border: 1px solid hsl(var(--free) / 0.3) !important;
+  }
+
+  .tool-active:hover {
+    background: hsl(var(--free) / 0.2) !important;
+  }
+
+  /* Editor transition curve (elastic overshoot) */
+  .editor-transition {
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-duration: 200ms;
+  }
+
+  /* Section indicator pattern */
+  .section-indicator {
+    @apply flex items-center gap-1.5;
+  }
+
+  .section-indicator::before {
+    content: '';
+    @apply w-1.5 h-1.5 rounded-full shrink-0;
+    background: hsl(var(--free));
+    box-shadow: 0 0 6px hsl(var(--free-glow));
+  }
+
+  /* Color picker active ring */
+  .color-picker-active {
+    @apply ring-2 scale-110;
+    ring-color: hsl(var(--free));
+    border-color: hsl(var(--free)) !important;
+  }
+
+  /* Footer dark section */
+  .footer-dark {
+    @apply bg-zinc-950 text-zinc-300 border-t border-zinc-800;
+  }
+
+  .footer-link {
+    @apply text-zinc-400 hover:text-[hsl(var(--free))] transition-colors;
+  }
+
+  /* Mono label style */
+  .mono-label {
+    @apply text-[10px] font-mono uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* PDF.js Text Layer - for text selection (PDF.js v5 compatible) */
   .textLayer {
     position: absolute;
     text-align: initial;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     overflow: hidden;
     opacity: 1;
-    line-height: 1.0;
+    line-height: 1;
     text-size-adjust: none;
     forced-color-adjust: none;
     transform-origin: 0 0;
     z-index: 2;
+    /* Allow container to use mix-blend-mode for better selection visibility */
+    isolation: isolate;
   }
 
-  .textLayer :is(span, br) {
+  .textLayer > span,
+  .textLayer > br {
     color: transparent;
     position: absolute;
     white-space: pre;
     cursor: text;
     transform-origin: 0% 0%;
+    /* CRITICAL: Reset all text-related properties to prevent interference */
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-rendering: auto;
+    font-kerning: none;
+    font-variant: normal;
+    font-feature-settings: normal;
+    -webkit-font-smoothing: auto;
+    text-transform: none;
+  }
+
+  /* PDF.js v5: span elements have role="presentation" */
+  .textLayer span[role="presentation"] {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    letter-spacing: normal;
+    word-spacing: normal;
   }
 
   .textLayer span.markedContent {

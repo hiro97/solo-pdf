@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { Navbar } from "./Navbar"
+import { FloatingNavbar } from "./FloatingNavbar"
 import { Footer } from "./Footer"
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -13,10 +13,11 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  // All pages use FloatingNavbar (unified header)
   return (
     <div className="relative flex min-h-screen flex-col">
-      <Navbar />
-      <main className="flex-1">{children}</main>
+      <FloatingNavbar />
+      <main className="flex-1 pt-16">{children}</main>
       <Footer />
     </div>
   )

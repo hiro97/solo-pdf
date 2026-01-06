@@ -80,3 +80,20 @@ export interface AnnotationLayerState {
   isDrawing: boolean
   startPoint: { x: number; y: number } | null
 }
+
+// History action for undo/redo
+export interface HistoryAction {
+  type: 'add' | 'remove' | 'modify'
+  annotationId: string
+  pageNumber: number
+  before: Annotation | null  // null for 'add'
+  after: Annotation | null   // null for 'remove'
+}
+
+// Per-page history storage
+export interface PageHistory {
+  undoStack: HistoryAction[]
+  redoStack: HistoryAction[]
+}
+
+export type HistoryStore = Map<number, PageHistory>

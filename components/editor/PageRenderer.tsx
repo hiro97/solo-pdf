@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useEffect, useRef, useState, useCallback } from "react"
-import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
-import { TextLayer } from "pdfjs-dist"
+import type { PDFDocumentProxy, PDFPageProxy } from "@/lib/pdfjs"
+import { TextLayer } from "@/lib/pdfjs"
 import type { ToolType, ToolSettings, PageDimensions, Annotation } from "./types"
 import { AnnotationLayer } from "./AnnotationLayer"
 
@@ -117,8 +117,12 @@ export const PageRenderer = React.memo(function PageRenderer({
         }
 
         // Set text layer dimensions to match viewport exactly
+        // Note: TextLayer uses CSS pixels (not scaled by DPR)
         textLayerRef.current.style.width = `${viewport.width}px`
         textLayerRef.current.style.height = `${viewport.height}px`
+        // Reset any transforms that might interfere
+        textLayerRef.current.style.transform = ''
+        textLayerRef.current.style.transformOrigin = '0 0'
 
         const textContent = await page.getTextContent()
         const textLayer = new TextLayer({
@@ -127,6 +131,9 @@ export const PageRenderer = React.memo(function PageRenderer({
           viewport: viewport,
         })
         await textLayer.render()
+
+        // Debug: Log text layer span count for verification
+        console.log('[PageRenderer] TextLayer rendered, spans:', textLayerRef.current.querySelectorAll('span').length)
       }
 
       setHasRendered(true)
@@ -136,6 +143,12 @@ export const PageRenderer = React.memo(function PageRenderer({
       setIsRendering(false)
     }
   }, [pdfDoc, pageNumber, scale, isVisible])
+
+  // Reset dimensions when pdfDoc changes (e.g., after rotation)
+  useEffect(() => {
+    setPageDimensions(null)
+    setHasRendered(false)
+  }, [pdfDoc])
 
   // Get dimensions on mount (for placeholder sizing)
   useEffect(() => {

@@ -194,98 +194,110 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      {/* Backdrop with blur */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       {/* Modal */}
-      <div className="relative bg-background rounded-lg shadow-xl border max-w-lg w-full mx-4">
+      <div className="relative editor-glass-panel rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h3 className="font-semibold">Create Signature</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+          <div className="section-indicator">
+            <span className="text-sm font-mono uppercase tracking-wider text-foreground">
+              Signature
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-7 w-7 hover:bg-muted/50"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b">
+        <div className="flex border-b border-border/50">
           <button
             onClick={() => setActiveTab('type')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors",
+              "flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider transition-all editor-transition",
               activeTab === 'type'
-                ? "border-b-2 border-primary text-primary"
+                ? "border-b-2 border-[hsl(var(--free))] text-[hsl(var(--free))]"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Type className="h-4 w-4" />
+            <Type className="h-3.5 w-3.5" />
             Type
           </button>
           <button
             onClick={() => setActiveTab('draw')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors",
+              "flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider transition-all editor-transition",
               activeTab === 'draw'
-                ? "border-b-2 border-primary text-primary"
+                ? "border-b-2 border-[hsl(var(--free))] text-[hsl(var(--free))]"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-3.5 w-3.5" />
             Draw
           </button>
           <button
             onClick={() => setActiveTab('upload')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors",
+              "flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider transition-all editor-transition",
               activeTab === 'upload'
-                ? "border-b-2 border-primary text-primary"
+                ? "border-b-2 border-[hsl(var(--free))] text-[hsl(var(--free))]"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Upload className="h-4 w-4" />
+            <Upload className="h-3.5 w-3.5" />
             Upload
           </button>
         </div>
 
         {/* Tab Content */}
-        <div className="p-4 min-h-[320px]">
+        <div className="p-4 min-h-[300px]">
           {/* Type Tab */}
           {activeTab === 'type' && (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Enter your name</label>
+                <label className="mono-label mb-1.5 block">Enter your name</label>
                 <Input
                   type="text"
                   placeholder="John Smith"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="text-lg"
+                  className="text-lg font-mono focus:ring-[hsl(var(--free))] focus:border-[hsl(var(--free))]"
                   autoFocus
                 />
               </div>
 
               {name.trim() && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Choose a style</label>
+                  <label className="mono-label">Choose a style</label>
                   <div className="grid gap-2">
                     {SIGNATURE_FONTS.map((font) => (
                       <button
                         key={font.name}
                         onClick={() => setSelectedFont(font)}
                         className={cn(
-                          "p-4 rounded-lg border-2 transition-all text-left bg-white",
+                          "p-3 rounded-lg border-2 transition-all editor-transition text-left bg-white",
                           selectedFont.name === font.name
-                            ? "border-primary ring-2 ring-primary/20"
+                            ? "border-[hsl(var(--free))] ring-2 ring-[hsl(var(--free)/0.2)] bg-[hsl(var(--free)/0.02)]"
                             : "border-muted hover:border-muted-foreground/30"
                         )}
                       >
                         <span
-                          className="text-3xl text-black block truncate"
+                          className="text-2xl text-black block truncate"
                           style={{ fontFamily: font.cssVar }}
                         >
                           {name}
                         </span>
-                        <span className="text-xs text-muted-foreground mt-1 block">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1 block">
                           {font.name}
                         </span>
                       </button>
@@ -295,8 +307,8 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
               )}
 
               {!name.trim() && (
-                <div className="flex items-center justify-center h-48 border rounded-lg bg-muted/20">
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex items-center justify-center h-44 border border-dashed border-border/50 rounded-lg bg-muted/10">
+                  <p className="text-xs font-mono text-muted-foreground">
                     Type your name to see signature styles
                   </p>
                 </div>
@@ -307,11 +319,11 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
           {/* Draw Tab */}
           {activeTab === 'draw' && (
             <div>
-              <div className="border rounded-lg overflow-hidden bg-white">
+              <div className="border border-border/50 rounded-lg overflow-hidden bg-white">
                 <canvas ref={canvasRef} />
               </div>
               <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] font-mono text-muted-foreground">
                   Draw your signature using mouse or touchpad
                 </p>
                 <Button
@@ -319,7 +331,7 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
                   size="sm"
                   onClick={handleClearDraw}
                   disabled={!hasDrawn}
-                  className="h-7 text-xs"
+                  className="h-6 text-[10px] font-mono"
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Clear
@@ -342,19 +354,20 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
               {!uploadedImage ? (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                  className="w-full h-44 border-2 border-dashed border-border/50 rounded-lg flex flex-col items-center justify-center gap-2
+                             hover:border-[hsl(var(--free)/0.5)] hover:bg-[hsl(var(--free)/0.02)] transition-all editor-transition"
                 >
                   <Upload className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs font-mono text-muted-foreground">
                     Click to upload signature image
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] font-mono text-muted-foreground">
                     PNG, JPG, or GIF
                   </span>
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <div className="border rounded-lg p-4 bg-white flex items-center justify-center min-h-[180px]">
+                  <div className="border border-border/50 rounded-lg p-4 bg-white flex items-center justify-center min-h-[180px]">
                     <img
                       src={uploadedImage}
                       alt="Uploaded signature"
@@ -366,7 +379,7 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
                       variant="ghost"
                       size="sm"
                       onClick={handleClearUpload}
-                      className="h-7 text-xs"
+                      className="h-6 text-[10px] font-mono"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
                       Remove
@@ -379,12 +392,22 @@ export function SignatureModal({ onSave, onClose }: SignatureModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t bg-muted/30">
-          <Button variant="outline" size="sm" onClick={onClose}>
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border/50 bg-muted/10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="text-xs font-mono"
+          >
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={!canSave}>
-            <Check className="h-4 w-4 mr-2" />
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!canSave}
+            className="bg-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.9)] text-white text-xs font-mono"
+          >
+            <Check className="h-3.5 w-3.5 mr-1.5" />
             Insert Signature
           </Button>
         </div>

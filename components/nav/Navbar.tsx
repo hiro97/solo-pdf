@@ -55,7 +55,7 @@ function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="w-9 h-9">
+      <Button variant="ghost" size="icon" className="w-8 h-8">
         <span className="sr-only">Toggle theme</span>
       </Button>
     )
@@ -65,7 +65,7 @@ function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="w-9 h-9"
+      className="w-8 h-8 hover:bg-[hsl(var(--free)/0.1)] hover:text-[hsl(var(--free))]"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
     >
       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -79,38 +79,52 @@ function ToolsDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50">
+        <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-mono uppercase tracking-wider
+                           text-muted-foreground hover:text-[hsl(var(--free))] transition-colors
+                           rounded-md hover:bg-[hsl(var(--free)/0.05)]">
           Tools
-          <ChevronDown className="h-3.5 w-3.5" />
+          <ChevronDown className="h-3 w-3" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[280px] p-2">
+      <DropdownMenuContent align="start" className="w-[280px] p-2 border-border/50">
         <div className="grid gap-1">
           {tools.map((tool) => (
             <DropdownMenuItem key={tool.href} asChild className="p-0">
               <Link
                 href={tool.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg
+                           hover:bg-[hsl(var(--free)/0.05)] transition-colors group"
               >
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <tool.icon className="h-4 w-4 text-primary" />
+                <div className="w-8 h-8 rounded-lg
+                                bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                flex items-center justify-center shrink-0
+                                group-hover:bg-[hsl(var(--free))] group-hover:border-[hsl(var(--free))]
+                                transition-all duration-200">
+                  <tool.icon className="h-4 w-4 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <div className="font-medium text-sm">{tool.label}</div>
-                  <div className="text-xs text-muted-foreground">{tool.description}</div>
+                  <div className="font-medium text-sm group-hover:text-[hsl(var(--free))] transition-colors">
+                    {tool.label}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-mono">{tool.description}</div>
                 </div>
               </Link>
             </DropdownMenuItem>
           ))}
         </div>
-        <DropdownMenuSeparator className="my-2" />
+        <DropdownMenuSeparator className="my-2 bg-border/50" />
         <DropdownMenuItem asChild className="p-0">
           <Link
             href="/editor"
-            className="flex items-center justify-between px-3 py-2.5 rounded-md bg-primary/5 hover:bg-primary/10 transition-colors"
+            className="flex items-center justify-between px-3 py-2.5 rounded-lg
+                       bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                       hover:bg-[hsl(var(--free))] transition-all duration-200 group"
           >
-            <span className="font-medium text-sm text-primary">Open Full Editor</span>
-            <ArrowRight className="h-4 w-4 text-primary" />
+            <span className="font-mono text-xs uppercase tracking-wider text-[hsl(var(--free))]
+                             group-hover:text-white transition-colors">
+              Open Full Editor
+            </span>
+            <ArrowRight className="h-4 w-4 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -128,33 +142,36 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50
+                       bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Shield className="h-4 w-4 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-[hsl(var(--free))] flex items-center justify-center
+                          shadow-[0_0_12px_hsl(var(--free-glow))]
+                          group-hover:shadow-[0_0_20px_hsl(var(--free-glow))] transition-shadow">
+            <Shield className="h-4 w-4 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-serif font-medium leading-none">{siteConfig.name}</span>
-            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider hidden sm:block">
+            <span className="text-base font-serif font-medium leading-none">{siteConfig.name}</span>
+            <span className="text-[9px] text-muted-foreground font-mono uppercase tracking-wider hidden sm:block">
               Local Only
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-0.5 md:flex">
           <ToolsDropdown />
           {siteConfig.navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded-md transition-all duration-200",
                 isActive(link.href)
-                  ? "text-foreground bg-muted"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "text-[hsl(var(--free))] bg-[hsl(var(--free)/0.1)]"
+                  : "text-muted-foreground hover:text-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.05)]"
               )}
             >
               {link.label}
@@ -165,12 +182,6 @@ export function Navbar() {
         {/* Desktop Actions */}
         <div className="hidden items-center gap-1 md:flex">
           <ThemeToggle />
-          <Button asChild size="sm" className="ml-2 gap-1.5">
-            <Link href="/editor">
-              Open Editor
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
         </div>
 
         {/* Mobile Menu */}
@@ -178,37 +189,51 @@ export function Navbar() {
           <ThemeToggle />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="w-9 h-9">
+              <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-[hsl(var(--free)/0.1)]">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+            <SheetContent side="right" className="w-[300px] sm:w-[350px] border-border/50">
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                    <Shield className="h-3 w-3 text-primary-foreground" />
+                  <div className="w-6 h-6 rounded bg-[hsl(var(--free))] flex items-center justify-center
+                                  shadow-[0_0_8px_hsl(var(--free-glow))]">
+                    <Shield className="h-3 w-3 text-white" />
                   </div>
-                  {siteConfig.name}
+                  <span className="font-serif">{siteConfig.name}</span>
                 </SheetTitle>
               </SheetHeader>
 
               <div className="mt-8 flex flex-col gap-6">
                 {/* Tools Section */}
                 <div>
-                  <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                    Tools
-                  </h3>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                                    shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      Tools
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {tools.map((tool) => (
                       <Link
                         key={tool.href}
                         href={tool.href}
                         onClick={() => setOpen(false)}
-                        className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-2 p-3 rounded-lg border border-border/50
+                                   hover:border-[hsl(var(--free)/0.3)] hover:bg-[hsl(var(--free)/0.05)]
+                                   transition-all duration-200 group"
                       >
-                        <tool.icon className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">{tool.label.replace(' PDF', '')}</span>
+                        <div className="w-6 h-6 rounded bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                        flex items-center justify-center
+                                        group-hover:bg-[hsl(var(--free))] group-hover:border-[hsl(var(--free))]
+                                        transition-all duration-200">
+                          <tool.icon className="h-3 w-3 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
+                        </div>
+                        <span className="text-xs font-medium group-hover:text-[hsl(var(--free))] transition-colors">
+                          {tool.label.replace(' PDF', '')}
+                        </span>
                       </Link>
                     ))}
                   </div>
@@ -216,9 +241,13 @@ export function Navbar() {
 
                 {/* Navigation Links */}
                 <div>
-                  <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">
-                    More
-                  </h3>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))]
+                                    shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      More
+                    </span>
+                  </div>
                   <div className="flex flex-col gap-1">
                     {siteConfig.navLinks.map((link) => (
                       <Link
@@ -226,10 +255,10 @@ export function Navbar() {
                         href={link.href}
                         onClick={() => setOpen(false)}
                         className={cn(
-                          "px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                          "px-3 py-2.5 text-xs font-mono uppercase tracking-wider rounded-lg transition-all duration-200",
                           isActive(link.href)
-                            ? "text-foreground bg-muted"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            ? "text-[hsl(var(--free))] bg-[hsl(var(--free)/0.1)]"
+                            : "text-muted-foreground hover:text-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.05)]"
                         )}
                       >
                         {link.label}
@@ -239,12 +268,16 @@ export function Navbar() {
                 </div>
 
                 {/* CTA */}
-                <Button asChild className="w-full gap-2">
-                  <Link href="/editor" onClick={() => setOpen(false)}>
+                <Link href="/editor" onClick={() => setOpen(false)}>
+                  <button className="w-full flex items-center justify-center gap-2 px-4 py-3
+                                     bg-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.9)]
+                                     text-white rounded-lg font-mono text-xs uppercase tracking-wider
+                                     transition-all duration-200 hover:-translate-y-0.5
+                                     shadow-[0_0_20px_hsl(var(--free-glow))]">
                     Open Editor
                     <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                  </button>
+                </Link>
               </div>
             </SheetContent>
           </Sheet>

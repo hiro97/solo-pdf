@@ -52,12 +52,20 @@ export function usePDFDocument() {
   // 현재 페이지 (별도 상태로 관리)
   const [currentPage, setCurrentPage] = useState(1)
 
+  // 문서 버전 (회전, 순서변경 등 PDF 수정 시 증가하여 캐시 무효화에 사용)
+  const [documentVersion, setDocumentVersion] = useState(0)
+
   // 암호 프롬프트 상태
   const [passwordPrompt, setPasswordPrompt] = useState<PasswordPromptState>({
     isOpen: false,
     isRetry: false,
     resolve: null,
   })
+  const [passwordFallback, setPasswordFallback] = useState({
+    isOpen: false,
+    isRetry: false,
+  })
+  const passwordFallbackFileRef = useRef<File | null>(null)
 
   // PDF 로더 인스턴스 참조
   const loaderRef = useRef<PDFLoader | null>(null)
@@ -87,9 +95,11 @@ export function usePDFDocument() {
   /**
    * PDF 파일 로드
    */
-  const loadPDF = useCallback(async (file: File, _password?: string) => {
+  const loadPDF = useCallback(async (file: File, password?: string) => {
     // 이전 로더 정리
     loaderRef.current?.dispose()
+    setPasswordFallback({ isOpen: false, isRetry: false })
+    passwordFallbackFileRef.current = null
 
     dispatch({ type: 'START_LOAD', file })
 
@@ -103,7 +113,7 @@ export function usePDFDocument() {
     loaderRef.current = loader
 
     try {
-      const result = await loader.load(file)
+      const result = await loader.load(file, password)
 
       dispatch({
         type: 'LOAD_COMPLETE',
@@ -137,6 +147,13 @@ export function usePDFDocument() {
       }
 
       dispatch({ type: 'ERROR', error: pdfError })
+      if (pdfError.code === 'PASSWORD_REQUIRED' || pdfError.code === 'PASSWORD_INCORRECT') {
+        passwordFallbackFileRef.current = file
+        setPasswordFallback({
+          isOpen: true,
+          isRetry: pdfError.code === 'PASSWORD_INCORRECT',
+        })
+      }
 
       // 암호 에러가 아닌 경우만 토스트 표시
       if (pdfError.code !== 'PASSWORD_REQUIRED' && pdfError.code !== 'PASSWORD_INCORRECT') {
@@ -155,8 +172,16 @@ export function usePDFDocument() {
       passwordPrompt.resolve({ password, cancelled: false })
       setPasswordPrompt({ isOpen: false, isRetry: false, resolve: null })
       dispatch({ type: 'SUBMIT_PASSWORD' })
+      return
     }
-  }, [passwordPrompt.resolve])
+
+    if (passwordFallback.isOpen && passwordFallbackFileRef.current) {
+      const retryFile = passwordFallbackFileRef.current
+      setPasswordFallback({ isOpen: false, isRetry: false })
+      passwordFallbackFileRef.current = null
+      loadPDF(retryFile, password)
+    }
+  }, [passwordPrompt.resolve, passwordFallback.isOpen, loadPDF])
 
   /**
    * 암호 입력 취소
@@ -165,10 +190,16 @@ export function usePDFDocument() {
     if (passwordPrompt.resolve) {
       passwordPrompt.resolve({ password: null, cancelled: true })
       setPasswordPrompt({ isOpen: false, isRetry: false, resolve: null })
+      loaderRef.current?.cancel()
+      dispatch({ type: 'CANCEL' })
+      return
     }
-    loaderRef.current?.cancel()
-    dispatch({ type: 'CANCEL' })
-  }, [passwordPrompt.resolve])
+    if (passwordFallback.isOpen) {
+      setPasswordFallback({ isOpen: false, isRetry: false })
+      passwordFallbackFileRef.current = null
+      dispatch({ type: 'RESET' })
+    }
+  }, [passwordPrompt.resolve, passwordFallback.isOpen])
 
   /**
    * 페이지 이동
@@ -221,6 +252,9 @@ export function usePDFDocument() {
         isEncrypted: derived.isEncrypted,
         pageCount: pdfJsDoc.numPages,
       })
+
+      // 버전 증가 (캐시 무효화 트리거)
+      setDocumentVersion(v => v + 1)
     } catch (err) {
       console.error('Failed to rotate page:', err)
       toast.error('페이지 회전 실패')
@@ -260,6 +294,9 @@ export function usePDFDocument() {
 
       // 현재 페이지 조정
       setCurrentPage((prev) => Math.min(prev, pdfJsDoc.numPages))
+
+      // 버전 증가 (캐시 무효화 트리거)
+      setDocumentVersion(v => v + 1)
     } catch (err) {
       console.error('Failed to delete page:', err)
       toast.error('페이지 삭제 실패')
@@ -309,6 +346,9 @@ export function usePDFDocument() {
         isEncrypted: derived.isEncrypted,
         pageCount: pdfJsDoc.numPages,
       })
+
+      // 버전 증가 (캐시 무효화 트리거)
+      setDocumentVersion(v => v + 1)
     } catch (err) {
       console.error('Failed to reorder pages:', err)
       toast.error('페이지 순서 변경 실패')
@@ -354,6 +394,9 @@ export function usePDFDocument() {
         isEncrypted: derived.isEncrypted,
         pageCount: pdfJsDoc.numPages,
       })
+
+      // 버전 증가 (캐시 무효화 트리거)
+      setDocumentVersion(v => v + 1)
 
       toast.success('PDF 병합 완료')
     } catch (err) {
@@ -457,6 +500,8 @@ export function usePDFDocument() {
     dispatch({ type: 'RESET' })
     setCurrentPage(1)
     setPasswordPrompt({ isOpen: false, isRetry: false, resolve: null })
+    setPasswordFallback({ isOpen: false, isRetry: false })
+    passwordFallbackFileRef.current = null
   }, [])
 
   // 파생 상태 계산
@@ -469,9 +514,10 @@ export function usePDFDocument() {
     pdfJs: derived.pdfJs,
     pageCount: derived.pageCount,
     currentPage,
+    documentVersion,
     isLoading: derived.isLoading,
-    error: derived.error?.userMessage || (passwordPrompt.isRetry ? 'Incorrect password' : null),
-    needsPassword: derived.needsPassword || passwordPrompt.isOpen,
+    error: derived.error?.userMessage || ((passwordPrompt.isRetry || passwordFallback.isRetry) ? '암호가 올바르지 않습니다' : null),
+    needsPassword: derived.needsPassword || passwordPrompt.isOpen || passwordFallback.isOpen,
     pendingFile: derived.file, // 호환성 유지
 
     // 액션

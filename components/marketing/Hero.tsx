@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { Shield, Cpu, UserX, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -41,47 +42,67 @@ export function Hero({
   ]
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-background to-muted/30 py-20 md:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-b from-background to-muted/30 py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-center"
-        >
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            {title}
-            {titleHighlight && (
-              <>
-                <br />
-                <span className="text-primary">{titleHighlight}</span>
-              </>
-            )}
-          </h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl"
-          >
-            {subtitle}
-          </motion.p>
+        <div className="grid items-center gap-12 lg:grid-cols-2">
+          {/* Text Content */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="text-center lg:text-left"
           >
-            <Button asChild size="lg" className="min-w-[160px]">
-              <Link href={ctaHref}>{ctaText}</Link>
-            </Button>
-            {secondaryCtaText && secondaryCtaHref && (
-              <Button asChild variant="outline" size="lg" className="min-w-[160px]">
-                <Link href={secondaryCtaHref}>{secondaryCtaText}</Link>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              {title}
+              {titleHighlight && (
+                <>
+                  <br />
+                  <span className="text-primary">{titleHighlight}</span>
+                </>
+              )}
+            </h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+              className="mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl lg:mx-0 mx-auto"
+            >
+              {subtitle}
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+              className="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:justify-start justify-center"
+            >
+              <Button asChild size="lg" className="min-w-[160px]">
+                <Link href={ctaHref}>{ctaText}</Link>
               </Button>
-            )}
+              {secondaryCtaText && secondaryCtaHref && (
+                <Button asChild variant="outline" size="lg" className="min-w-[160px]">
+                  <Link href={secondaryCtaHref}>{secondaryCtaText}</Link>
+                </Button>
+              )}
+            </motion.div>
           </motion.div>
-        </motion.div>
+
+          {/* Hero Image */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+            className="flex justify-center lg:justify-end"
+          >
+            <Image
+              src="/hero-image.png"
+              alt="Free PDF Editor"
+              width={500}
+              height={500}
+              className="w-full max-w-md lg:max-w-lg"
+              priority
+            />
+          </motion.div>
+        </div>
 
         {showTrustBadges && (
           <motion.div

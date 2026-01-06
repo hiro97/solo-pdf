@@ -3,7 +3,6 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, Calendar, Clock, Tag, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs"
 import { BlogPostingJsonLd } from "@/components/seo/JsonLd"
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer"
@@ -64,23 +63,30 @@ function RelatedPosts({ currentPost }: { currentPost: BlogPost }) {
   if (relatedPosts.length === 0) return null
 
   return (
-    <section className="mt-12 pt-8 border-t">
-      <h2 className="text-lg font-medium mb-6">Related Articles</h2>
+    <section className="mt-12 pt-8 border-t border-border/50">
+      {/* Section header */}
+      <div className="section-indicator mb-6">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          Related Articles
+        </span>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         {relatedPosts.map((post) => (
           <Link key={post.slug} href={`/blog/${post.slug}`} className="group">
-            <Card className="h-full transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base line-clamp-2 group-hover:text-primary transition-colors">
-                  {post.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {post.description}
-                </p>
-              </CardContent>
-            </Card>
+            <article
+              className="h-full p-4 rounded-xl border bg-card/50 backdrop-blur-sm
+                         transition-all duration-300 hover:shadow-md hover:-translate-y-0.5
+                         hover:border-[hsl(var(--free)/0.3)]"
+            >
+              <h3 className="text-sm font-medium line-clamp-2 mb-2
+                             group-hover:text-[hsl(var(--free))] transition-colors">
+                {post.title}
+              </h3>
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {post.description}
+              </p>
+            </article>
           </Link>
         ))}
       </div>
@@ -118,7 +124,7 @@ export default async function BlogPostPage({ params }: PageProps) {
           <AdSlot slot="top-banner" format="horizontal" className="max-w-[728px]" />
         </div>
 
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
           <Breadcrumbs
             items={[
               { label: "Blog", href: "/blog" },
@@ -131,40 +137,47 @@ export default async function BlogPostPage({ params }: PageProps) {
             {/* Back link */}
             <Link
               href="/blog"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+              className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-wider
+                         text-muted-foreground hover:text-[hsl(var(--free))] transition-colors mb-8"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to Blog
             </Link>
 
             {/* Header */}
             <header className="mb-8">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
+              {/* Meta info */}
+              <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground mb-4">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
                   {post.date}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
+                <span className="w-1 h-1 rounded-full bg-[hsl(var(--free))]" />
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
                   {post.readingTime}
                 </span>
               </div>
 
+              {/* Title */}
               <h1 className="text-3xl md:text-4xl font-serif font-medium tracking-tight mb-4">
                 {post.title}
               </h1>
 
-              <p className="text-lg text-muted-foreground mb-6">
+              {/* Description */}
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
                 {post.description}
               </p>
 
+              {/* Tags */}
               <div className="flex flex-wrap items-center gap-2">
-                <Tag className="h-4 w-4 text-muted-foreground" />
+                <Tag className="h-3.5 w-3.5 text-[hsl(var(--free))]" />
                 {post.tags.map((tag) => (
                   <Link key={tag} href={`/blog?tag=${tag}`}>
                     <Badge
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-secondary/80"
+                      className="cursor-pointer font-mono text-[10px] uppercase tracking-wider
+                                 bg-[hsl(var(--free)/0.1)] text-[hsl(var(--free))] border-[hsl(var(--free)/0.2)]
+                                 hover:bg-[hsl(var(--free)/0.2)] transition-colors"
                     >
                       {tag}
                     </Badge>
@@ -174,7 +187,12 @@ export default async function BlogPostPage({ params }: PageProps) {
             </header>
 
             {/* Content */}
-            <div className="prose prose-neutral dark:prose-invert max-w-none">
+            <div className="prose prose-neutral dark:prose-invert max-w-none
+                            prose-headings:font-serif prose-headings:tracking-tight
+                            prose-a:text-[hsl(var(--free))] prose-a:no-underline hover:prose-a:underline
+                            prose-strong:font-medium
+                            prose-code:font-mono prose-code:text-sm
+                            prose-pre:bg-muted prose-pre:border prose-pre:rounded-lg">
               <MarkdownRenderer content={post.content} />
             </div>
 
@@ -182,7 +200,16 @@ export default async function BlogPostPage({ params }: PageProps) {
             <RelatedPosts currentPost={post} />
 
             {/* CTA */}
-            <section className="mt-12 rounded-2xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-8 text-center">
+            <section className="mt-12 rounded-2xl p-8 text-center
+                                border border-[hsl(var(--free)/0.3)]
+                                bg-gradient-to-br from-[hsl(var(--free)/0.05)] via-[hsl(var(--free)/0.08)] to-[hsl(var(--free)/0.02)]">
+              {/* Section indicator */}
+              <div className="section-indicator justify-center mb-3">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Get Started
+                </span>
+              </div>
+
               <h2 className="text-xl font-serif font-medium mb-2">
                 Try it yourself
               </h2>
@@ -191,7 +218,11 @@ export default async function BlogPostPage({ params }: PageProps) {
               </p>
               <Link
                 href="/editor"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3
+                           bg-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.9)]
+                           text-white rounded-lg font-mono text-sm uppercase tracking-wider
+                           transition-all duration-200 hover:-translate-y-0.5
+                           shadow-[0_0_20px_hsl(var(--free-glow))]"
               >
                 Open PDF Editor
                 <ArrowRight className="h-4 w-4" />

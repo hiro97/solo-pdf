@@ -1,9 +1,24 @@
 import { PDFDocument } from 'pdf-lib'
 import type { PDFDocumentProxy, PDFDocumentLoadingTask } from 'pdfjs-dist'
 import { pdfjsLib, configurePdfWorker } from '@/lib/pdfjs'
-import type { PDFLoaderConfig, PDFLoadResult, PDFError } from './types'
+import type { PDFLoaderConfig, PDFLoadResult } from './types'
+import { PasswordResponses } from './types'
 import { PDFLoadError, normalizeError } from './errors'
-import { createPasswordAwareLoadOptions, PasswordCancelledError } from './password-handler'
+import {
+  createPasswordAwareLoadOptions,
+  createSimpleLoadOptions,
+  PasswordCancelledError,
+  type PDFLoadOptions,
+} from './password-handler'
+
+const isPasswordException = (err: unknown): err is { name: string; code?: number } => {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'name' in err &&
+    (err as { name?: string }).name === 'PasswordException'
+  )
+}
 
 /**
  * PDF 로더 클래스
@@ -30,7 +45,7 @@ export class PDFLoader {
    * @returns PDF 로드 결과 (pdfJs, pdfLib, isEncrypted)
    * @throws PDFError - 로드 실패 시
    */
-  async load(file: File): Promise<PDFLoadResult> {
+  async load(file: File, password?: string): Promise<PDFLoadResult> {
     // 이전 로드 취소
     this.cancel()
 
@@ -53,33 +68,107 @@ export class PDFLoader {
 
       this.config.onProgress?.('loading', 30)
 
-      // PDF.js로 로드 (암호 콜백 포함)
-      const loadOptions = createPasswordAwareLoadOptions(
-        arrayBuffer,
-        this.config.passwordPromptFn,
-        signal
-      )
+      // 원본 보관용 복사본 (pdf-lib/재시도용으로 사용)
+      const arrayBufferForPdfLib = arrayBuffer.slice(0)
+      const createPdfJsData = () => arrayBufferForPdfLib.slice(0)
 
-      this.currentLoadingTask = pdfjsLib.getDocument(loadOptions)
+      const loadPdfJsDocument = async (
+        options: PDFLoadOptions,
+        onPassword?: PDFLoadOptions['onPassword']
+      ): Promise<PDFDocumentProxy> => {
+        this.currentLoadingTask = pdfjsLib.getDocument(options)
+        if (onPassword) {
+          this.currentLoadingTask.onPassword = onPassword
+        }
 
-      // 취소 시 로딩 태스크 파괴
-      const abortHandler = () => {
-        this.currentLoadingTask?.destroy()
+        const abortHandler = () => {
+          this.currentLoadingTask?.destroy()
+        }
+        signal.addEventListener('abort', abortHandler)
+
+        try {
+          return await this.currentLoadingTask.promise
+        } finally {
+          signal.removeEventListener('abort', abortHandler)
+          this.currentLoadingTask = null
+        }
       }
-      signal.addEventListener('abort', abortHandler)
+
+      const loadPdfJsWithPrompt = async (isRetry: boolean): Promise<PDFDocumentProxy> => {
+        let retry = isRetry
+
+        while (true) {
+          if (signal.aborted) {
+            throw new PDFLoadError('LOADING_CANCELLED', 'Loading was cancelled')
+          }
+
+          const result = await this.config.passwordPromptFn(retry)
+
+          if (signal.aborted) {
+            throw new PDFLoadError('LOADING_CANCELLED', 'Loading was cancelled')
+          }
+
+          if (result.cancelled) {
+            throw new PDFLoadError('LOADING_CANCELLED', 'Password entry cancelled')
+          }
+
+          if (!result.password) {
+            throw new PDFLoadError('PASSWORD_REQUIRED', 'No password provided')
+          }
+
+          try {
+            const retryOptions = createSimpleLoadOptions(createPdfJsData(), result.password)
+            return await loadPdfJsDocument(retryOptions)
+          } catch (retryError) {
+            if (retryError instanceof PasswordCancelledError) {
+              throw new PDFLoadError('LOADING_CANCELLED', 'Password entry cancelled')
+            }
+            if (isPasswordException(retryError)) {
+              retry = true
+              continue
+            }
+            throw retryError
+          }
+        }
+      }
 
       let pdfJsDoc: PDFDocumentProxy
-      try {
-        pdfJsDoc = await this.currentLoadingTask.promise
-      } catch (err) {
-        // 암호 입력 취소 처리
-        if (err instanceof PasswordCancelledError) {
-          throw new PDFLoadError('LOADING_CANCELLED', 'Password entry cancelled')
+      if (password) {
+        try {
+          const passwordOptions = createSimpleLoadOptions(createPdfJsData(), password)
+          pdfJsDoc = await loadPdfJsDocument(passwordOptions)
+        } catch (err) {
+          if (err instanceof PasswordCancelledError) {
+            throw new PDFLoadError('LOADING_CANCELLED', 'Password entry cancelled')
+          }
+          if (isPasswordException(err)) {
+            const isRetry = err.code === PasswordResponses.INCORRECT_PASSWORD
+            pdfJsDoc = await loadPdfJsWithPrompt(isRetry)
+          } else {
+            throw err
+          }
         }
-        throw err
-      } finally {
-        signal.removeEventListener('abort', abortHandler)
-        this.currentLoadingTask = null
+      } else {
+        // PDF.js로 로드 (암호 콜백 포함)
+        const { onPassword, ...pdfJsOptions } = createPasswordAwareLoadOptions(
+          createPdfJsData(),
+          this.config.passwordPromptFn,
+          signal
+        )
+
+        try {
+          pdfJsDoc = await loadPdfJsDocument(pdfJsOptions, onPassword)
+        } catch (err) {
+          if (err instanceof PasswordCancelledError) {
+            throw new PDFLoadError('LOADING_CANCELLED', 'Password entry cancelled')
+          }
+          if (isPasswordException(err)) {
+            const isRetry = err.code === PasswordResponses.INCORRECT_PASSWORD
+            pdfJsDoc = await loadPdfJsWithPrompt(isRetry)
+          } else {
+            throw err
+          }
+        }
       }
 
       if (signal.aborted) {
@@ -89,9 +178,9 @@ export class PDFLoader {
 
       this.config.onProgress?.('processing', 60)
 
-      // pdf-lib로 로드 시도
+      // pdf-lib로 로드 시도 (복사본 사용)
       const { pdfLib, isEncrypted } = await this.loadPdfLib(
-        arrayBuffer,
+        arrayBufferForPdfLib,
         pdfJsDoc,
         signal
       )
@@ -178,8 +267,8 @@ export class PDFLoader {
   ): Promise<{ pdfLib: PDFDocument; isEncrypted: boolean }> {
     try {
       // 먼저 직접 로드 시도 (비암호화 PDF)
-      // ArrayBuffer 복사본 사용 (PDF.js가 원본을 detach할 수 있음)
-      const pdfLib = await PDFDocument.load(arrayBuffer.slice(0))
+      // 이미 복사본이므로 그대로 사용
+      const pdfLib = await PDFDocument.load(arrayBuffer)
       return { pdfLib, isEncrypted: false }
     } catch (err: unknown) {
       // 암호화 에러인지 확인

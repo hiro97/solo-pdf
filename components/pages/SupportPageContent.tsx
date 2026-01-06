@@ -7,11 +7,12 @@ import {
   MessageSquare,
   RefreshCw,
   FileX,
-  Smartphone,
   Download,
   ArrowRight,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Lightbulb
 } from "lucide-react"
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs"
 import { FAQPageJsonLd } from "@/components/seo/JsonLd"
@@ -54,6 +55,18 @@ const quickTips = [
   "Works offline after first visit",
 ]
 
+// Section indicator component
+function SectionIndicator({ label, icon: Icon }: { label: string; icon?: React.ComponentType<{ className?: string }> }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      {Icon && <Icon className="h-4 w-4 text-[hsl(var(--free))]" />}
+      <span className="text-[10px] font-mono uppercase tracking-wider text-[hsl(var(--free))]">
+        {label}
+      </span>
+    </div>
+  )
+}
+
 export function SupportPageContent() {
   return (
     <>
@@ -73,17 +86,24 @@ export function SupportPageContent() {
         </div>
 
         {/* Hero */}
-        <section className="pt-16 pb-8">
+        <section className="pt-12 pb-6">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <p className="text-sm font-mono text-primary mb-4 uppercase tracking-wider">
-                Help Center
-              </p>
-              <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight mb-4">
+              {/* Section indicator */}
+              <div className="flex justify-center mb-4">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-[hsl(var(--free))]" />
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[hsl(var(--free))]">
+                    Help Center
+                  </span>
+                </div>
+              </div>
+
+              <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight mb-3">
                 How can we help?
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl mx-auto">
@@ -93,25 +113,30 @@ export function SupportPageContent() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-4xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-8">
           <Breadcrumbs items={[{ label: "Support", href: "/support" }]} className="mb-8" />
 
           {/* Quick Tips */}
           <motion.section
-            className="mb-12"
+            className="mb-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-6 md:p-8">
-              <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                Quick Tips
-              </h2>
+            <div className="rounded-2xl p-6 md:p-8
+                            border border-[hsl(var(--free)/0.3)]
+                            bg-gradient-to-br from-[hsl(var(--free)/0.05)] via-[hsl(var(--free)/0.08)] to-[hsl(var(--free)/0.02)]">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="h-4 w-4 text-[hsl(var(--free))]" />
+                <span className="text-xs font-mono uppercase tracking-wider text-[hsl(var(--free))]">
+                  Quick Tips
+                </span>
+              </div>
               <ul className="grid sm:grid-cols-2 gap-3">
                 {quickTips.map((tip, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))] shrink-0
+                                     shadow-[0_0_6px_hsl(var(--free-glow))]" />
                     {tip}
                   </li>
                 ))}
@@ -121,24 +146,28 @@ export function SupportPageContent() {
 
           {/* Troubleshooting */}
           <motion.section
-            className="mb-12"
+            className="mb-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="text-xl font-serif font-medium mb-6">Troubleshooting</h2>
+            <SectionIndicator label="Troubleshooting" icon={Lightbulb} />
+            <h2 className="text-xl font-serif font-medium mb-5">Common Issues</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               {troubleshootingItems.map((item, i) => (
                 <motion.div
                   key={i}
-                  className="p-5 rounded-xl border bg-card hover:shadow-md transition-shadow"
+                  className="p-5 rounded-xl border bg-card/50 backdrop-blur-sm
+                             hover:shadow-md hover:border-[hsl(var(--free)/0.3)] transition-all duration-300"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 + i * 0.1 }}
+                  transition={{ duration: 0.3, delay: 0.2 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <item.icon className="w-5 h-5 text-primary" />
+                    <div className="shrink-0 w-10 h-10 rounded-lg
+                                    bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                    flex items-center justify-center">
+                      <item.icon className="w-5 h-5 text-[hsl(var(--free))]" />
                     </div>
                     <div>
                       <h3 className="font-medium mb-1">{item.title}</h3>
@@ -152,19 +181,27 @@ export function SupportPageContent() {
 
           {/* FAQ */}
           <motion.section
-            className="mb-12"
+            className="mb-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
+            transition={{ duration: 0.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="text-xl font-serif font-medium mb-6">Frequently Asked Questions</h2>
+            <SectionIndicator label="FAQ" icon={HelpCircle} />
+            <h2 className="text-xl font-serif font-medium mb-5">Frequently Asked Questions</h2>
             <Accordion type="single" collapsible className="w-full">
               {supportFAQItems.map((item, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left hover:no-underline">
+                <AccordionItem
+                  key={index}
+                  value={`item-${index}`}
+                  className="border-border/50 data-[state=open]:border-[hsl(var(--free)/0.3)]"
+                >
+                  <AccordionTrigger
+                    className="text-left hover:no-underline hover:text-[hsl(var(--free))]
+                               font-medium text-sm py-4 transition-colors"
+                  >
                     {item.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
+                  <AccordionContent className="text-sm text-muted-foreground pb-4">
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -174,46 +211,59 @@ export function SupportPageContent() {
 
           {/* Contact */}
           <motion.section
-            className="mb-12"
+            className="mb-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
+            transition={{ duration: 0.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="text-xl font-serif font-medium mb-6">Get in Touch</h2>
+            <SectionIndicator label="Contact" icon={MessageSquare} />
+            <h2 className="text-xl font-serif font-medium mb-5">Get in Touch</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <a
-                href="mailto:support@solopdf.com"
-                className="group p-6 rounded-xl border bg-card hover:shadow-md hover:-translate-y-0.5 transition-all"
+                href="mailto:jonghyun.captureall@gmail.com"
+                className="group p-5 rounded-xl border bg-card/50 backdrop-blur-sm
+                           hover:shadow-md hover:-translate-y-0.5 hover:border-[hsl(var(--free)/0.3)]
+                           transition-all duration-300"
               >
                 <div className="flex items-center gap-4 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Mail className="w-6 h-6 text-primary" />
+                  <div className="w-11 h-11 rounded-xl
+                                  bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                  flex items-center justify-center
+                                  group-hover:bg-[hsl(var(--free))] group-hover:border-[hsl(var(--free))]
+                                  transition-all duration-300">
+                    <Mail className="w-5 h-5 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Email Support</h3>
-                    <p className="text-sm text-muted-foreground">Technical help & questions</p>
+                    <h3 className="font-medium text-sm">Email Support</h3>
+                    <p className="text-xs text-muted-foreground">Technical help & questions</p>
                   </div>
                 </div>
-                <p className="text-sm text-primary group-hover:underline">
-                  support@solopdf.com
+                <p className="text-xs font-mono text-[hsl(var(--free))] group-hover:underline">
+                  jonghyun.captureall@gmail.com
                 </p>
               </a>
 
               <a
-                href="mailto:feedback@solopdf.com"
-                className="group p-6 rounded-xl border bg-card hover:shadow-md hover:-translate-y-0.5 transition-all"
+                href="mailto:jonghyun.captureall@gmail.com"
+                className="group p-5 rounded-xl border bg-card/50 backdrop-blur-sm
+                           hover:shadow-md hover:-translate-y-0.5 hover:border-[hsl(var(--free)/0.3)]
+                           transition-all duration-300"
               >
                 <div className="flex items-center gap-4 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <MessageSquare className="w-6 h-6 text-primary" />
+                  <div className="w-11 h-11 rounded-xl
+                                  bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                                  flex items-center justify-center
+                                  group-hover:bg-[hsl(var(--free))] group-hover:border-[hsl(var(--free))]
+                                  transition-all duration-300">
+                    <MessageSquare className="w-5 h-5 text-[hsl(var(--free))] group-hover:text-white transition-colors" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Feedback</h3>
-                    <p className="text-sm text-muted-foreground">Feature requests & ideas</p>
+                    <h3 className="font-medium text-sm">Feedback</h3>
+                    <p className="text-xs text-muted-foreground">Feature requests & ideas</p>
                   </div>
                 </div>
-                <p className="text-sm text-primary group-hover:underline">
-                  feedback@solopdf.com
+                <p className="text-xs font-mono text-[hsl(var(--free))] group-hover:underline">
+                  jonghyun.captureall@gmail.com
                 </p>
               </a>
             </div>
@@ -223,9 +273,18 @@ export function SupportPageContent() {
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
+            transition={{ duration: 0.4, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="rounded-2xl border bg-muted/30 p-8 text-center">
+            <div className="rounded-2xl p-8 text-center
+                            border border-[hsl(var(--free)/0.3)]
+                            bg-gradient-to-br from-[hsl(var(--free)/0.05)] via-[hsl(var(--free)/0.08)] to-[hsl(var(--free)/0.02)]">
+              {/* Section indicator */}
+              <div className="section-indicator justify-center mb-3">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                  Still stuck?
+                </span>
+              </div>
+
               <h2 className="text-xl font-serif font-medium mb-2">
                 Still need help?
               </h2>
@@ -233,8 +292,12 @@ export function SupportPageContent() {
                 Drop us an email and we'll get back to you within 24 hours.
               </p>
               <a
-                href="mailto:support@solopdf.com"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                href="mailto:jonghyun.captureall@gmail.com"
+                className="inline-flex items-center gap-2 px-6 py-3
+                           bg-[hsl(var(--free))] hover:bg-[hsl(var(--free)/0.9)]
+                           text-white rounded-lg font-mono text-sm uppercase tracking-wider
+                           transition-all duration-200 hover:-translate-y-0.5
+                           shadow-[0_0_20px_hsl(var(--free-glow))]"
               >
                 Contact Support
                 <ArrowRight className="h-4 w-4" />

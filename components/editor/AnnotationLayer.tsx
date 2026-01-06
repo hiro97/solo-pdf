@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { Canvas, PencilBrush, IText, Rect, Path, FabricObject, FabricImage } from 'fabric'
 import type { ToolType, ToolSettings, PageDimensions, Annotation } from './types'
+import { registerCanvas, unregisterCanvas } from '@/lib/canvas-registry'
 
 interface AnnotationLayerProps {
   width: number
@@ -49,6 +50,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
   const toolSettingsRef = useRef<ToolSettings>(toolSettings)
   const onAnnotationAddRef = useRef(onAnnotationAdd)
   const onAnnotationUpdateRef = useRef(onAnnotationUpdate)
+  const onAnnotationRemoveRef = useRef(onAnnotationRemove)
   const onSignatureRequestRef = useRef(onSignatureRequest)
 
   // For shape drawing (rectangle, redact)
@@ -71,7 +73,15 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
   useEffect(() => {
     onAnnotationUpdateRef.current = onAnnotationUpdate
-  }, [onAnnotationUpdate])
+    // Update registry with latest callback if canvas exists
+    if (fabricRef.current) {
+      registerCanvas(pageNumber, fabricRef.current, onAnnotationUpdate)
+    }
+  }, [onAnnotationUpdate, pageNumber])
+
+  useEffect(() => {
+    onAnnotationRemoveRef.current = onAnnotationRemove
+  }, [onAnnotationRemove])
 
   useEffect(() => {
     onSignatureRequestRef.current = onSignatureRequest
@@ -208,7 +218,12 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     // Signal that canvas is fully initialized and ready for event handlers
     setCanvasReady(true)
 
+    // Register canvas in global registry for sync before save
+    registerCanvas(pageNumber, canvas, onAnnotationUpdateRef.current)
+
     return () => {
+      // Unregister canvas before disposing
+      unregisterCanvas(pageNumber)
       if (fabricRef.current) {
         fabricRef.current.dispose()
         fabricRef.current = null
@@ -609,8 +624,10 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       const annotationId = (e.target as unknown as { annotationId?: string }).annotationId
       if (annotationId) {
         // Include 'styles' for text objects (rich text), 'src' for images
-        const extraProps = e.target.type === 'i-text' ? ['styles'] :
-          e.target.type === 'image' ? ['src'] : []
+        // Normalize type to lowercase for comparison (Fabric.js v7 uses PascalCase)
+        const objType = (e.target.type || '').toLowerCase()
+        const extraProps = objType === 'i-text' ? ['styles'] :
+          objType === 'image' ? ['src'] : []
         const json = JSON.stringify(
           (e.target as unknown as { toObject: (props: string[]) => object }).toObject(extraProps)
         )
@@ -623,8 +640,13 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeObject = canvas.getActiveObject()
         if (activeObject && activeToolRef.current === 'select') {
+          const annotationId = (activeObject as unknown as { annotationId?: string }).annotationId
           canvas.remove(activeObject)
           canvas.renderAll()
+          // Sync with annotation state (fixes delete bug)
+          if (annotationId) {
+            onAnnotationRemoveRef.current(annotationId)
+          }
         }
       }
     }

@@ -3,7 +3,6 @@ import { Shield, Server, Database, Eye, Lock, CheckCircle } from "lucide-react"
 import { PageHero } from "@/components/marketing/Hero"
 import { MotionInView } from "@/components/marketing/MotionInView"
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { siteConfig } from "@/lib/site"
 
 export const metadata: Metadata = {
@@ -27,6 +26,30 @@ export const metadata: Metadata = {
   },
 }
 
+// Section component with green accent icon
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div className="mb-5 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-[hsl(var(--free)/0.1)] border border-[hsl(var(--free)/0.2)]
+                        flex items-center justify-center">
+          <Icon className="h-5 w-5 text-[hsl(var(--free))]" />
+        </div>
+        <h2 className="text-xl font-serif font-medium">{title}</h2>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export default function PrivacyPage() {
   return (
     <>
@@ -36,7 +59,7 @@ export default function PrivacyPage() {
         ctaText="Edit PDF"
       />
 
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
         <Breadcrumbs
           items={[{ label: "Privacy Policy", href: "/privacy" }]}
           className="mb-8"
@@ -44,125 +67,148 @@ export default function PrivacyPage() {
 
         {/* Zero Upload Commitment */}
         <MotionInView>
-          <Card className="mb-12 border-primary/50 bg-primary/5">
-            <CardHeader className="flex flex-row items-center gap-4">
-              <Shield className="h-10 w-10 text-primary" />
-              <div>
-                <CardTitle className="text-2xl">Zero Server Upload Promise</CardTitle>
-                <p className="text-muted-foreground">Our Core Privacy Commitment</p>
+          <div className="mb-10 rounded-2xl p-6 md:p-8
+                          border border-[hsl(var(--free)/0.3)]
+                          bg-gradient-to-br from-[hsl(var(--free)/0.05)] via-[hsl(var(--free)/0.08)] to-[hsl(var(--free)/0.02)]">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[hsl(var(--free))] flex items-center justify-center
+                              shadow-[0_0_20px_hsl(var(--free-glow))]">
+                <Shield className="h-6 w-6 text-white" />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-lg font-medium">
-                SOLO PDF never sends your files to any server.
-              </p>
-              <ul className="space-y-2">
-                {[
-                  "All PDF processing is done in your browser using JavaScript/WebAssembly",
-                  "File data is never transmitted over the internet",
-                  "All temporary data is deleted when you close your browser",
-                  "You can verify this by checking your browser's Network tab",
-                ].map((item, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+              <div>
+                <h2 className="text-xl font-serif font-medium">Zero Server Upload Promise</h2>
+                <p className="text-xs font-mono uppercase tracking-wider text-[hsl(var(--free))] mt-1">
+                  Our Core Privacy Commitment
+                </p>
+              </div>
+            </div>
+
+            <p className="text-base font-medium mb-4">
+              SOLO PDF never sends your files to any server.
+            </p>
+
+            <ul className="space-y-2.5">
+              {[
+                "All PDF processing is done in your browser using JavaScript/WebAssembly",
+                "File data is never transmitted over the internet",
+                "All temporary data is deleted when you close your browser",
+                "You can verify this by checking your browser's Network tab",
+              ].map((item, index) => (
+                <li key={index} className="flex items-start gap-2.5">
+                  <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--free))]" />
+                  <span className="text-sm text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </MotionInView>
 
-        <div className="space-y-12">
+        <div className="space-y-10">
           {/* What We DON'T Collect */}
           <MotionInView>
-            <section>
-              <div className="mb-6 flex items-center gap-3">
-                <Server className="h-6 w-6 text-muted-foreground" />
-                <h2 className="text-2xl font-bold">Information We Do NOT Collect</h2>
-              </div>
-              <div className="space-y-3 text-muted-foreground">
+            <Section icon={Server} title="Information We Do NOT Collect">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>We do not collect the following information:</p>
-                <ul className="list-inside list-disc space-y-1 pl-4">
-                  <li>Your PDF file contents</li>
-                  <li>File names or metadata</li>
-                  <li>Edits or signature images</li>
-                  <li>Personal identification information (no registration required)</li>
+                <ul className="space-y-2 pl-1">
+                  {[
+                    "Your PDF file contents",
+                    "File names or metadata",
+                    "Edits or signature images",
+                    "Personal identification information (no registration required)",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))] shrink-0
+                                       shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </div>
-            </section>
+            </Section>
           </MotionInView>
 
           {/* What We Store Locally */}
           <MotionInView>
-            <section>
-              <div className="mb-6 flex items-center gap-3">
-                <Database className="h-6 w-6 text-muted-foreground" />
-                <h2 className="text-2xl font-bold">Information Stored Locally</h2>
-              </div>
-              <div className="space-y-3 text-muted-foreground">
+            <Section icon={Database} title="Information Stored Locally">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
                   For your convenience, the following information may be stored in your browser's local storage:
                 </p>
-                <ul className="list-inside list-disc space-y-1 pl-4">
-                  <li>Theme settings (light/dark mode)</li>
-                  <li>Language preferences</li>
-                  <li>Recently used tool settings (optional)</li>
+                <ul className="space-y-2 pl-1">
+                  {[
+                    "Theme settings (light/dark mode)",
+                    "Language preferences",
+                    "Recently used tool settings (optional)",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))] shrink-0
+                                       shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
-                <p className="mt-4">
+                <p className="mt-4 pt-4 border-t border-border/50">
                   This information is stored only on your device and is never sent to any server.
                   You can delete it anytime through your browser settings.
                 </p>
               </div>
-            </section>
+            </Section>
           </MotionInView>
 
           {/* Analytics */}
           <MotionInView>
-            <section>
-              <div className="mb-6 flex items-center gap-3">
-                <Eye className="h-6 w-6 text-muted-foreground" />
-                <h2 className="text-2xl font-bold">Analytics and Cookies</h2>
-              </div>
-              <div className="space-y-3 text-muted-foreground">
+            <Section icon={Eye} title="Analytics and Cookies">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>We may collect the following anonymous analytics data to improve our service:</p>
-                <ul className="list-inside list-disc space-y-1 pl-4">
-                  <li>Page visit counts</li>
-                  <li>Features used</li>
-                  <li>Browser type and device type</li>
-                  <li>Approximate location (country level)</li>
+                <ul className="space-y-2 pl-1">
+                  {[
+                    "Page visit counts",
+                    "Features used",
+                    "Browser type and device type",
+                    "Approximate location (country level)",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))] shrink-0
+                                       shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
-                <p className="mt-4">
+                <p className="mt-4 pt-4 border-t border-border/50">
                   This data cannot identify you personally and is unrelated to your file contents.
                 </p>
               </div>
-            </section>
+            </Section>
           </MotionInView>
 
           {/* AI Features (Future) */}
           <MotionInView>
-            <section>
-              <div className="mb-6 flex items-center gap-3">
-                <Lock className="h-6 w-6 text-muted-foreground" />
-                <h2 className="text-2xl font-bold">AI Features (Future Plans)</h2>
-              </div>
-              <div className="space-y-3 text-muted-foreground">
+            <Section icon={Lock} title="AI Features (Future Plans)">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>If AI-based features are added in the future:</p>
-                <ul className="list-inside list-disc space-y-1 pl-4">
-                  <li>Only text you select will be used for processing</li>
-                  <li>Explicit consent will be requested before AI processing</li>
-                  <li>API keys will be managed by you</li>
-                  <li>AI provider's privacy policy will apply separately</li>
+                <ul className="space-y-2 pl-1">
+                  {[
+                    "Only text you select will be used for processing",
+                    "Explicit consent will be requested before AI processing",
+                    "API keys will be managed by you",
+                    "AI provider's privacy policy will apply separately",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--free))] shrink-0
+                                       shadow-[0_0_6px_hsl(var(--free-glow))]" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </div>
-            </section>
+            </Section>
           </MotionInView>
 
           {/* Changes */}
           <MotionInView>
-            <section>
-              <h2 className="mb-4 text-2xl font-bold">Policy Changes</h2>
-              <p className="text-muted-foreground">
+            <section className="pt-6 border-t border-border/50">
+              <h2 className="mb-3 text-lg font-serif font-medium">Policy Changes</h2>
+              <p className="text-sm text-muted-foreground">
                 This privacy policy may be updated. We will notify you of significant changes
                 through our website. Last updated: December 2024
               </p>
@@ -171,13 +217,13 @@ export default function PrivacyPage() {
 
           {/* Contact */}
           <MotionInView>
-            <section>
-              <h2 className="mb-4 text-2xl font-bold">Contact</h2>
-              <p className="text-muted-foreground">
+            <section className="pt-6 border-t border-border/50">
+              <h2 className="mb-3 text-lg font-serif font-medium">Contact</h2>
+              <p className="text-sm text-muted-foreground">
                 For privacy-related inquiries, please contact us at{" "}
                 <a
                   href="mailto:jonghyun.captureall@gmail.com"
-                  className="text-primary hover:underline"
+                  className="text-[hsl(var(--free))] hover:underline font-mono text-xs"
                 >
                   jonghyun.captureall@gmail.com
                 </a>

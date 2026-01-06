@@ -9,6 +9,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist"
 interface EditorSidebarProps {
   pdfDoc: PDFDocumentProxy | null
   currentPage: number
+  documentVersion?: number
   onPageSelect: (page: number) => void
   onReorderPages?: (fromIndex: number, toIndex: number) => void
   onMergePDF?: (file: File, insertAtIndex: number) => void
@@ -23,6 +24,7 @@ const thumbnailCache = new Map<string, string>()
 export function EditorSidebar({
   pdfDoc,
   currentPage,
+  documentVersion,
   onPageSelect,
   onReorderPages,
   onMergePDF,
@@ -43,19 +45,19 @@ export function EditorSidebar({
   const observerRef = useRef<IntersectionObserver | null>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
 
-  // Clear cache when PDF changes
+  // Clear cache when PDF changes or document version changes (rotation, reorder, etc.)
   useEffect(() => {
     setThumbnails(new Map())
     setSelectedPages(new Set())
     lastSelectedRef.current = null
-  }, [pdfDoc?.fingerprints[0]])
+  }, [pdfDoc?.fingerprints[0], documentVersion])
 
   // Generate a single thumbnail with higher resolution
   const generateThumbnail = useCallback(async (pageNumber: number) => {
     if (!pdfDoc || thumbnails.has(pageNumber)) return
 
-    // Check cache first
-    const cacheKey = `${pdfDoc.fingerprints[0]}-${pageNumber}-hires`
+    // Check cache first (include documentVersion to invalidate on rotation/reorder)
+    const cacheKey = `${pdfDoc.fingerprints[0]}-${pageNumber}-${documentVersion ?? 0}-hires`
     if (thumbnailCache.has(cacheKey)) {
       setThumbnails(prev => new Map(prev).set(pageNumber, thumbnailCache.get(cacheKey)!))
       return
@@ -88,7 +90,7 @@ export function EditorSidebar({
     } catch (err) {
       console.error(`Failed to render thumbnail for page ${pageNumber}:`, err)
     }
-  }, [pdfDoc, thumbnails])
+  }, [pdfDoc, thumbnails, documentVersion])
 
   // Generate thumbnails for visible pages
   useEffect(() => {
@@ -322,41 +324,50 @@ export function EditorSidebar({
       onDragLeave={handleContainerDragLeave}
       onDrop={handleContainerDrop}
       className={cn(
-        "w-[140px] border-r bg-muted/30 overflow-y-auto flex-shrink-0 flex flex-col",
-        isDraggingExternal && "ring-2 ring-primary ring-inset",
+        "w-[120px] border-r editor-glass-panel overflow-y-auto flex-shrink-0 flex flex-col",
+        isDraggingExternal && "ring-2 ring-[hsl(var(--free))] ring-inset",
         className
       )}
     >
+      {/* Header with section indicator */}
+      <div className="px-2 py-2 border-b border-border/50 sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
+        <div className="section-indicator">
+          <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+            Pages
+          </span>
+        </div>
+      </div>
+
       {/* Selection actions toolbar */}
       {hasSelection && (
-        <div className="p-2 border-b bg-background/80 flex items-center justify-between gap-1 sticky top-0 z-10">
-          <span className="text-xs text-muted-foreground">{selectedPages.size} selected</span>
-          <div className="flex gap-1">
+        <div className="p-1.5 border-b border-border/50 bg-background/80 flex items-center justify-between gap-1 sticky top-8 z-10 backdrop-blur-sm">
+          <span className="text-[10px] font-mono text-muted-foreground">{selectedPages.size} sel</span>
+          <div className="flex gap-0.5">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-5 w-5"
               onClick={handleExtract}
               title="Extract selected pages"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3 w-3" />
             </Button>
             {pageCount > selectedPages.size && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
+                className="h-5 w-5 text-destructive hover:text-destructive"
                 onClick={handleDelete}
                 title="Delete selected pages"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
       )}
 
-      <div className="p-2 space-y-2 flex-1">
+      <div className="p-1.5 space-y-1.5 flex-1">
         {pages.map((pageNumber) => {
           const thumbnailUrl = thumbnails.get(pageNumber)
           const isActive = pageNumber === currentPage
@@ -370,8 +381,8 @@ export function EditorSidebar({
               key={pageNumber}
               className={cn(
                 "relative",
-                isDropTarget && "before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-primary before:rounded",
-                isExternalDropTarget && "before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-green-500 before:rounded"
+                isDropTarget && "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-[hsl(var(--free))] before:rounded",
+                isExternalDropTarget && "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-[hsl(var(--free))] before:rounded"
               )}
             >
               <button
@@ -390,13 +401,13 @@ export function EditorSidebar({
                 onDragEnd={handleDragEnd}
                 onClick={(e) => handlePageClick(pageNumber, e)}
                 className={cn(
-                  "w-full relative group transition-all aspect-[3/4]",
+                  "w-full relative group transition-all aspect-[3/4] editor-transition",
                   "rounded border-2 overflow-hidden bg-white cursor-grab active:cursor-grabbing",
                   isDragging && "opacity-50",
                   isSelected && !isActive
-                    ? "border-blue-500 ring-2 ring-blue-500/20"
+                    ? "border-[hsl(var(--free)/0.5)] ring-1 ring-[hsl(var(--free)/0.15)]"
                     : isActive
-                    ? "border-primary ring-2 ring-primary/20"
+                    ? "border-[hsl(var(--free))] ring-2 ring-[hsl(var(--free)/0.2)]"
                     : "border-transparent hover:border-muted-foreground/30"
                 )}
               >
@@ -409,16 +420,16 @@ export function EditorSidebar({
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 border-2 border-[hsl(var(--free))] border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
                 <div
                   className={cn(
-                    "absolute bottom-0 left-0 right-0 py-0.5 text-xs font-medium text-center",
+                    "absolute bottom-0 left-0 right-0 py-0.5 text-[10px] font-mono font-medium text-center",
                     isSelected && !isActive
-                      ? "bg-blue-500 text-white"
+                      ? "bg-[hsl(var(--free)/0.8)] text-white"
                       : isActive
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-[hsl(var(--free))] text-white"
                       : "bg-background/80 text-foreground"
                   )}
                 >
@@ -426,8 +437,8 @@ export function EditorSidebar({
                 </div>
                 {/* Selection checkbox indicator */}
                 {isSelected && (
-                  <div className="absolute top-1 left-1 w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-[hsl(var(--free))] rounded-sm flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -440,8 +451,8 @@ export function EditorSidebar({
 
       {/* Drop zone hint at bottom */}
       {isDraggingExternal && (
-        <div className="p-2 border-t border-dashed border-primary bg-primary/5 text-center">
-          <p className="text-xs text-primary">Drop PDF to merge</p>
+        <div className="p-1.5 border-t border-dashed border-[hsl(var(--free))] bg-[hsl(var(--free)/0.05)] text-center">
+          <p className="text-[10px] font-mono text-[hsl(var(--free))]">Drop PDF to merge</p>
         </div>
       )}
     </div>
