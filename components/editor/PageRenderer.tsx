@@ -47,6 +47,7 @@ export const PageRenderer = React.memo(function PageRenderer({
   const [pageDimensions, setPageDimensions] = useState<PageDimensions | null>(null)
   const [hasRendered, setHasRendered] = useState(false)
   const renderTaskRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pdfRenderTaskRef = useRef<{ promise: Promise<void>; cancel: () => void } | null>(null)
   const pageRef = useRef<PDFPageProxy | null>(null)
 
   // Get page dimensions (needed for placeholder sizing)
@@ -77,9 +78,15 @@ export const PageRenderer = React.memo(function PageRenderer({
   const renderPage = useCallback(async () => {
     if (!pdfDoc || !canvasRef.current || !isVisible) return
 
-    // Cancel any pending render
+    // Cancel any pending timeout
     if (renderTaskRef.current) {
       clearTimeout(renderTaskRef.current)
+    }
+
+    // Cancel any in-progress PDF.js render task
+    if (pdfRenderTaskRef.current) {
+      pdfRenderTaskRef.current.cancel()
+      pdfRenderTaskRef.current = null
     }
 
     setIsRendering(true)
@@ -121,12 +128,18 @@ export const PageRenderer = React.memo(function PageRenderer({
         height: unscaledViewport.height,
       })
 
-      // Render PDF page
-      await page.render({
+      // Render PDF page (store task to allow cancellation)
+      const renderTask = page.render({
         canvasContext: context,
         viewport,
         canvas,
-      }).promise
+      })
+      pdfRenderTaskRef.current = {
+        promise: renderTask.promise,
+        cancel: () => renderTask.cancel(),
+      }
+      await renderTask.promise
+      pdfRenderTaskRef.current = null
 
       // Check if still mounted after render
       if (!isMountedRef.current) return
@@ -137,13 +150,13 @@ export const PageRenderer = React.memo(function PageRenderer({
         // Clear previous text layer content safely using replaceChildren (avoids removeChild race conditions)
         textLayerContainer.replaceChildren()
 
-        // Set text layer dimensions to match viewport exactly
-        // Note: TextLayer uses CSS pixels (not scaled by DPR)
-        textLayerContainer.style.width = `${viewport.width}px`
-        textLayerContainer.style.height = `${viewport.height}px`
-        // Reset any transforms that might interfere
-        textLayerContainer.style.transform = ''
-        textLayerContainer.style.transformOrigin = '0 0'
+        // PDF.js v5 uses CSS custom properties for responsive scaling
+        // We need to set these BEFORE render() so PDF.js can use them
+        // --total-scale-factor: the zoom scale
+        // --scale-round-x/y: rounding precision (1px for pixel-perfect alignment)
+        textLayerContainer.style.setProperty('--total-scale-factor', String(scale))
+        textLayerContainer.style.setProperty('--scale-round-x', '1px')
+        textLayerContainer.style.setProperty('--scale-round-y', '1px')
 
         const textContent = await page.getTextContent()
 
@@ -156,10 +169,11 @@ export const PageRenderer = React.memo(function PageRenderer({
           })
           await textLayer.render()
 
-          // Debug: Log text layer span count for verification
-          if (textLayerRef.current) {
-            console.log('[PageRenderer] TextLayer rendered, spans:', textLayerRef.current.querySelectorAll('span').length)
-          }
+          // After render, PDF.js sets width/height using CSS variables
+          // Force explicit dimensions to ensure correct sizing
+          textLayerRef.current.style.width = `${viewport.width}px`
+          textLayerRef.current.style.height = `${viewport.height}px`
+
         }
       }
 
@@ -168,6 +182,10 @@ export const PageRenderer = React.memo(function PageRenderer({
         setIsRendering(false)
       }
     } catch (err) {
+      // Ignore cancelled render tasks (expected when re-rendering quickly)
+      if (err instanceof Error && err.message?.includes('cancelled')) {
+        return
+      }
       console.error("Failed to render page:", err)
       if (isMountedRef.current) {
         setIsRendering(false)
@@ -296,8 +314,7 @@ export const PageRenderer = React.memo(function PageRenderer({
             style={{
               pointerEvents: activeTool === 'textSelect' ? 'auto' : 'none',
               zIndex: activeTool === 'textSelect' ? 30 : 5,
-              '--total-scale-factor': scale,
-            } as React.CSSProperties}
+            }}
           />
 
           {/* Annotation Layer (interactive Fabric.js canvas) */}

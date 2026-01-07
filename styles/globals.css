@@ -258,6 +258,7 @@
   }
 
   /* PDF.js Text Layer - for text selection (PDF.js v5 compatible) */
+  /* PDF.js v5 uses CSS custom properties that we must apply via CSS rules */
   .textLayer {
     position: absolute;
     text-align: initial;
@@ -271,38 +272,30 @@
     caret-color: CanvasText;
     z-index: 2;
 
-    /* PDF.js v5 CSS custom property system */
-    --min-font-size: 1;
-    --text-scale-factor: calc(var(--total-scale-factor, 1) * var(--min-font-size));
-    --min-font-size-inv: calc(1 / var(--min-font-size));
+    /* PDF.js v5 CSS custom properties for scaling */
+    --text-scale-factor: var(--total-scale-factor, 1);
   }
 
-  /* PDF.js v5: Text spans use CSS custom properties for positioning */
-  .textLayer > :not(.markedContent),
-  .textLayer .markedContent span:not(.markedContent) {
-    color: transparent;
-    position: absolute;
-    white-space: pre;
-    cursor: text;
-    transform-origin: 0% 0%;
-    z-index: 1;
-
-    /* Font size calculated from PDF.js --font-height variable */
-    --font-height: 0;
-    font-size: calc(var(--text-scale-factor) * var(--font-height));
-
-    /* Transform calculated from PDF.js variables */
-    --scale-x: 1;
-    --rotate: 0deg;
-    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
-  }
-
+  /* PDF.js v5: Apply CSS variables to calculate font-size and transform */
   .textLayer :is(span, br) {
     color: transparent;
     position: absolute;
     white-space: pre;
     cursor: text;
     transform-origin: 0% 0%;
+
+    /* Font size from PDF.js --font-height variable */
+    font-size: calc(var(--text-scale-factor, 1) * var(--font-height, 16px));
+
+    /* Horizontal scaling from PDF.js --scale-x variable */
+    transform: scaleX(var(--scale-x, 1));
+
+    /* Ensure consistent text rendering */
+    letter-spacing: 0;
+    word-spacing: 0;
+    font-kerning: none;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
   }
 
   .textLayer .markedContent {
