@@ -136,7 +136,7 @@ export function FloatingNavbar() {
 
   return (
     <motion.header
-      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-3xl"
+      className="fixed top-3 left-0 right-0 z-50 w-[calc(100%-1.5rem)] max-w-3xl mx-auto"
       style={{ y: navY }}
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -144,7 +144,7 @@ export function FloatingNavbar() {
     >
       <motion.div
         className={cn(
-          "flex items-center justify-between gap-2 px-2 py-1.5",
+          "flex items-center justify-center gap-4 px-4 py-1.5",
           "bg-background/80 backdrop-blur-xl border border-border/40 rounded-full",
           "shadow-lg shadow-black/5"
         )}
@@ -153,7 +153,7 @@ export function FloatingNavbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 pl-1.5 group"
+          className="flex items-center gap-2 group"
         >
           <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center">
             <FileText className="h-3.5 w-3.5 text-background" />
