@@ -262,55 +262,72 @@
     position: absolute;
     text-align: initial;
     inset: 0;
-    overflow: hidden;
+    overflow: clip;
     opacity: 1;
     line-height: 1;
     text-size-adjust: none;
     forced-color-adjust: none;
     transform-origin: 0 0;
+    caret-color: CanvasText;
     z-index: 2;
-    /* Allow container to use mix-blend-mode for better selection visibility */
-    isolation: isolate;
+
+    /* PDF.js v5 CSS custom property system */
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor, 1) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
   }
 
-  .textLayer > span,
-  .textLayer > br {
+  /* PDF.js v5: Text spans use CSS custom properties for positioning */
+  .textLayer > :not(.markedContent),
+  .textLayer .markedContent span:not(.markedContent) {
     color: transparent;
     position: absolute;
     white-space: pre;
     cursor: text;
     transform-origin: 0% 0%;
-    /* CRITICAL: Reset all text-related properties to prevent interference */
-    letter-spacing: normal;
-    word-spacing: normal;
-    text-rendering: auto;
-    font-kerning: none;
-    font-variant: normal;
-    font-feature-settings: normal;
-    -webkit-font-smoothing: auto;
-    text-transform: none;
+    z-index: 1;
+
+    /* Font size calculated from PDF.js --font-height variable */
+    --font-height: 0;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+
+    /* Transform calculated from PDF.js variables */
+    --scale-x: 1;
+    --rotate: 0deg;
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
   }
 
-  /* PDF.js v5: span elements have role="presentation" */
-  .textLayer span[role="presentation"] {
+  .textLayer :is(span, br) {
     color: transparent;
     position: absolute;
     white-space: pre;
     cursor: text;
     transform-origin: 0% 0%;
-    letter-spacing: normal;
-    word-spacing: normal;
   }
 
-  .textLayer span.markedContent {
-    top: 0;
-    height: 0;
+  .textLayer .markedContent {
+    display: contents;
   }
 
+  .textLayer span[role="img"] {
+    user-select: none;
+    cursor: default;
+  }
+
+  /* Selection styling */
+  .textLayer ::selection {
+    background: hsl(var(--primary) / 0.3);
+  }
+
+  .textLayer br::selection {
+    background: transparent;
+  }
+
+  /* Highlight classes (for search results, etc.) */
   .textLayer .highlight {
     margin: -1px;
     padding: 1px;
-    background-color: hsl(var(--primary) / 0.3);
+    background-color: hsl(var(--primary) / 0.25);
     border-radius: 4px;
   }
 
@@ -334,27 +351,16 @@
     background-color: hsl(var(--primary) / 0.5);
   }
 
-  .textLayer ::selection {
-    background: hsl(var(--primary) / 0.3);
-  }
-
-  .textLayer br::selection {
-    background: transparent;
-  }
-
   .textLayer .endOfContent {
     display: block;
     position: absolute;
-    left: 0;
-    top: 100%;
-    right: 0;
-    bottom: 0;
-    z-index: -1;
+    inset: 100% 0 0;
+    z-index: 0;
     cursor: default;
     user-select: none;
   }
 
-  .textLayer .endOfContent.active {
+  .textLayer.selecting .endOfContent {
     top: 0;
   }
 }

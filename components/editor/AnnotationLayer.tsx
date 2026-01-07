@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useEffect, useRef, useCallback, useState } from 'react'
-import { Canvas, PencilBrush, IText, Rect, Path, FabricObject, FabricImage } from 'fabric'
-import type { ToolType, ToolSettings, PageDimensions, Annotation } from './types'
+import { Canvas, PencilBrush, IText, Rect, Ellipse, Path, FabricObject, FabricImage } from 'fabric'
+import type { ToolType, ToolSettings, Annotation } from './types'
 import { registerCanvas, unregisterCanvas } from '@/lib/canvas-registry'
 
 interface AnnotationLayerProps {
@@ -53,10 +53,10 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
   const onAnnotationRemoveRef = useRef(onAnnotationRemove)
   const onSignatureRequestRef = useRef(onSignatureRequest)
 
-  // For shape drawing (rectangle, redact)
+  // For shape drawing (rectangle, redact, circle, highlighter)
   const isDrawingRef = useRef(false)
   const startPointRef = useRef<{ x: number; y: number } | null>(null)
-  const activeShapeRef = useRef<Rect | null>(null)
+  const activeShapeRef = useRef<Rect | Ellipse | null>(null)
 
   // Keep refs in sync with props
   useEffect(() => {
@@ -505,6 +505,16 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           createRectangle(canvas, x, y, true, settings)
           break
 
+        case 'circle':
+          if (clickedObject) return
+          createCircle(canvas, x, y, settings)
+          break
+
+        case 'highlighter':
+          if (clickedObject) return
+          createHighlight(canvas, x, y, settings)
+          break
+
         case 'signature':
           // Store click position for signature placement
           ;(window as unknown as { pendingSignaturePosition?: { x: number; y: number } }).pendingSignaturePosition = { x, y }
@@ -650,12 +660,30 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       const startX = startPointRef.current.x
       const startY = startPointRef.current.y
 
-      const left = Math.min(startX, x)
-      const top = Math.min(startY, y)
-      const rectWidth = Math.abs(x - startX)
-      const rectHeight = Math.abs(y - startY)
+      const currentTool = activeToolRef.current
 
-      activeShapeRef.current.set({ left, top, width: rectWidth, height: rectHeight })
+      if (currentTool === 'circle') {
+        // For circle/ellipse, update rx and ry
+        const rx = Math.abs(x - startX) / 2
+        const ry = Math.abs(y - startY) / 2
+        const centerX = (startX + x) / 2
+        const centerY = (startY + y) / 2
+
+        ;(activeShapeRef.current as Ellipse).set({
+          left: centerX - rx,
+          top: centerY - ry,
+          rx,
+          ry,
+        })
+      } else {
+        // For rectangle shapes (rectangle, redact, highlighter)
+        const left = Math.min(startX, x)
+        const top = Math.min(startY, y)
+        const rectWidth = Math.abs(x - startX)
+        const rectHeight = Math.abs(y - startY)
+
+        activeShapeRef.current.set({ left, top, width: rectWidth, height: rectHeight })
+      }
       canvas.renderAll()
     }
 
@@ -663,15 +691,30 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     const handleMouseUp = () => {
       if (!isDrawingRef.current || !activeShapeRef.current) return
 
-      const rect = activeShapeRef.current
+      const shape = activeShapeRef.current
+      const currentTool = activeToolRef.current
 
-      if (rect.width && rect.height && rect.width > 5 && rect.height > 5) {
-        const json = JSON.stringify(rect.toObject())
-        const type = rect.fill === '#000000' ? 'redact' : 'rectangle'
-        const annotationId = onAnnotationAddRef.current(json, type)
-        ;(rect as unknown as { annotationId: string }).annotationId = annotationId
+      // Check minimum size based on shape type
+      const minSize = 5
+      let isValidSize = false
+
+      if (shape instanceof Ellipse) {
+        isValidSize = (shape.rx ?? 0) > minSize && (shape.ry ?? 0) > minSize
       } else {
-        canvas.remove(rect)
+        isValidSize = (shape.width ?? 0) > minSize && (shape.height ?? 0) > minSize
+      }
+
+      if (isValidSize) {
+        const json = JSON.stringify(shape.toObject())
+        // Determine annotation type based on current tool
+        let type: ToolType = currentTool
+        if (currentTool !== 'circle' && currentTool !== 'highlighter' && currentTool !== 'redact') {
+          type = shape.fill === '#000000' ? 'redact' : 'rectangle'
+        }
+        const annotationId = onAnnotationAddRef.current(json, type)
+        ;(shape as unknown as { annotationId: string }).annotationId = annotationId
+      } else {
+        canvas.remove(shape)
       }
 
       isDrawingRef.current = false
@@ -789,6 +832,66 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         originX: 'left',
         originY: 'top',
         // Control styling
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderColor: '#2563eb',
+      })
+
+      cvs.add(rect)
+      activeShapeRef.current = rect
+    }
+
+    // Helper: Create circle (ellipse)
+    const createCircle = (cvs: Canvas, x: number, y: number, settings: ToolSettings) => {
+      isDrawingRef.current = true
+      startPointRef.current = { x, y }
+
+      const ellipse = new Ellipse({
+        left: x,
+        top: y,
+        rx: 0,
+        ry: 0,
+        fill: 'transparent',
+        stroke: settings.color,
+        strokeWidth: settings.strokeWidth,
+        strokeUniform: true,
+        selectable: true,
+        evented: true,
+        originX: 'left',
+        originY: 'top',
+        cornerColor: '#2563eb',
+        cornerSize: 8,
+        cornerStyle: 'circle',
+        transparentCorners: false,
+        borderColor: '#2563eb',
+      })
+
+      cvs.add(ellipse)
+      activeShapeRef.current = ellipse
+    }
+
+    // Helper: Create highlight (semi-transparent rectangle)
+    const createHighlight = (cvs: Canvas, x: number, y: number, settings: ToolSettings) => {
+      isDrawingRef.current = true
+      startPointRef.current = { x, y }
+
+      // Convert color to semi-transparent
+      const highlightColor = settings.color + '66' // 40% opacity
+
+      const rect = new Rect({
+        left: x,
+        top: y,
+        width: 0,
+        height: 0,
+        fill: highlightColor,
+        stroke: 'transparent',
+        strokeWidth: 0,
+        selectable: true,
+        evented: true,
+        originX: 'left',
+        originY: 'top',
         cornerColor: '#2563eb',
         cornerSize: 8,
         cornerStyle: 'circle',
@@ -946,6 +1049,22 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           })
           ;(rect as unknown as { annotationId: string }).annotationId = annotation.id
           canvas.add(rect)
+        } else if (objType === 'ellipse') {
+          // Circle tool creates Ellipse objects
+          const ellipse = new Ellipse({
+            ...restData,
+            selectable: true,
+            hasControls: true,
+            hasBorders: true,
+            strokeUniform: true,
+            cornerColor: '#2563eb',
+            cornerSize: 8,
+            cornerStyle: 'circle',
+            transparentCorners: false,
+            borderColor: '#2563eb',
+          })
+          ;(ellipse as unknown as { annotationId: string }).annotationId = annotation.id
+          canvas.add(ellipse)
         } else if (objType === 'path') {
           // Draw tool creates Path objects
           const path = new Path(objData.path, {

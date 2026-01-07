@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { getPendingFile, clearPendingFile } from "@/lib/file-store"
-import { EditorToolbar } from "./EditorToolbar"
+import { EditorTopBar } from "./EditorTopBar"
+import { EditorVerticalToolbar } from "./EditorVerticalToolbar"
 import { EditorSidebar } from "./EditorSidebar"
 import { EditorCanvas } from "./EditorCanvas"
 import { ToolSettingsPanel } from "./ToolSettingsPanel"
@@ -13,7 +14,7 @@ import { useZoom } from "./hooks/useZoom"
 import { useAnnotations } from "./hooks/useAnnotations"
 import { SignatureModal } from "./modals/SignatureModal"
 import { syncAllCanvasesToAnnotations, getCanvasAnnotationsDirectly } from "@/lib/canvas-registry"
-import type { ToolType, ToolSettings, PageDimensions } from "./types"
+import type { ToolType, ToolSettings } from "./types"
 import type { SaveResult } from "@/lib/pdf-save"
 
 export function EditorPageContent() {
@@ -29,11 +30,11 @@ export function EditorPageContent() {
     italic: false,
     underline: false,
   })
-  const [pageDimensions, setPageDimensions] = useState<PageDimensions | null>(null)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<SaveResult | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // PDF Document state
@@ -168,13 +169,22 @@ export function EditorPageContent() {
     [deletePage, pageCount]
   )
 
-  // Handle fit to page
-  const handleFitToPage = useCallback(() => {
-    if (containerRef.current && pageDimensions) {
-      const rect = containerRef.current.getBoundingClientRect()
-      fitToPage({ width: rect.width, height: rect.height }, pageDimensions)
+  // Handle fit to page - uses canvasContainerRef for accurate dimensions
+  const handleFitToPage = useCallback(async () => {
+    if (!canvasContainerRef.current || !pdfJs) return
+
+    try {
+      // Get dimensions from the current page
+      const page = await pdfJs.getPage(currentPage)
+      const viewport = page.getViewport({ scale: 1 })
+      const dimensions = { width: viewport.width, height: viewport.height }
+
+      const rect = canvasContainerRef.current.getBoundingClientRect()
+      fitToPage({ width: rect.width, height: rect.height }, dimensions)
+    } catch (err) {
+      console.error('Failed to get page dimensions for fit-to-page:', err)
     }
-  }, [fitToPage, pageDimensions])
+  }, [fitToPage, pdfJs, currentPage])
 
   // Handle annotation add (now receives pageNumber from PageRenderer)
   const handleAnnotationAdd = useCallback(
@@ -450,8 +460,8 @@ export function EditorPageContent() {
         className="hidden"
       />
 
-      {/* Toolbar */}
-      <EditorToolbar
+      {/* Compact Top Bar */}
+      <EditorTopBar
         currentPage={currentPage}
         pageCount={pageCount}
         onPageChange={goToPage}
@@ -464,8 +474,6 @@ export function EditorPageContent() {
         onFitToPage={handleFitToPage}
         onRotate={handleRotate}
         onDelete={handleDelete}
-        activeTool={activeTool}
-        onToolChange={setActiveTool}
         onSave={handleSave}
         onOpenFile={handleOpenFile}
         isSaving={isSaving}
@@ -473,17 +481,17 @@ export function EditorPageContent() {
         canRedo={canRedo(currentPage)}
         onUndo={handleUndo}
         onRedo={handleRedo}
+        fileName={file?.name}
       />
 
-      {/* Tool Settings Panel */}
-      <ToolSettingsPanel
-        activeTool={activeTool}
-        settings={toolSettings}
-        onSettingsChange={setToolSettings}
-      />
-
-      {/* Main content area */}
+      {/* Main content area with vertical toolbar */}
       <div ref={containerRef} className="flex flex-1 overflow-hidden">
+        {/* Left Vertical Toolbar - Tools */}
+        <EditorVerticalToolbar
+          activeTool={activeTool}
+          onToolChange={setActiveTool}
+        />
+
         {/* Sidebar with thumbnails */}
         <EditorSidebar
           pdfDoc={pdfJs}
@@ -496,23 +504,32 @@ export function EditorPageContent() {
           onDeletePages={handleDeletePages}
         />
 
-        {/* Canvas area - renders all pages with vertical scroll */}
-        <EditorCanvas
-          pdfDoc={pdfJs}
-          pageCount={pageCount}
-          scale={scale}
-          activeTool={activeTool}
-          toolSettings={toolSettings}
-          getPageAnnotations={getPageAnnotations}
-          onAnnotationAdd={handleAnnotationAdd}
-          onAnnotationUpdate={handleAnnotationUpdate}
-          onAnnotationRemove={handleAnnotationRemove}
-          onSignatureRequest={handleSignatureRequest}
-          onCurrentPageChange={handleCurrentPageChange}
-          onStyleSync={handleStyleSync}
-          targetPage={scrollTargetPage}
-          documentVersion={documentVersion}
-        />
+        {/* Tool Settings Panel - now floats over canvas */}
+        <div ref={canvasContainerRef} className="relative flex-1 flex flex-col overflow-hidden">
+          <ToolSettingsPanel
+            activeTool={activeTool}
+            settings={toolSettings}
+            onSettingsChange={setToolSettings}
+          />
+
+          {/* Canvas area - renders all pages with vertical scroll */}
+          <EditorCanvas
+            pdfDoc={pdfJs}
+            pageCount={pageCount}
+            scale={scale}
+            activeTool={activeTool}
+            toolSettings={toolSettings}
+            getPageAnnotations={getPageAnnotations}
+            onAnnotationAdd={handleAnnotationAdd}
+            onAnnotationUpdate={handleAnnotationUpdate}
+            onAnnotationRemove={handleAnnotationRemove}
+            onSignatureRequest={handleSignatureRequest}
+            onCurrentPageChange={handleCurrentPageChange}
+            onStyleSync={handleStyleSync}
+            targetPage={scrollTargetPage}
+            documentVersion={documentVersion}
+          />
+        </div>
       </div>
 
       {/* Loading overlay for PDF operations */}

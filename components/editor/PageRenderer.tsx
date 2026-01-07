@@ -296,7 +296,8 @@ export const PageRenderer = React.memo(function PageRenderer({
             style={{
               pointerEvents: activeTool === 'textSelect' ? 'auto' : 'none',
               zIndex: activeTool === 'textSelect' ? 30 : 5,
-            }}
+              '--total-scale-factor': scale,
+            } as React.CSSProperties}
           />
 
           {/* Annotation Layer (interactive Fabric.js canvas) */}
