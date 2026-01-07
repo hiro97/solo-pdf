@@ -20,6 +20,8 @@ interface PageRendererProps {
   onPageVisible?: (pageNumber: number, isIntersecting: boolean) => void
   onStyleSync?: (styles: Partial<ToolSettings>) => void
   isVisible?: boolean
+  /** Document version - triggers re-render when changed (e.g., after rotation) */
+  documentVersion?: number
 }
 
 export const PageRenderer = React.memo(function PageRenderer({
@@ -36,6 +38,7 @@ export const PageRenderer = React.memo(function PageRenderer({
   onPageVisible,
   onStyleSync,
   isVisible = true,
+  documentVersion = 0,
 }: PageRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -61,6 +64,15 @@ export const PageRenderer = React.memo(function PageRenderer({
     }
   }, [pdfDoc, pageNumber, pageDimensions])
 
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   // Render PDF page to canvas
   const renderPage = useCallback(async () => {
     if (!pdfDoc || !canvasRef.current || !isVisible) return
@@ -74,6 +86,10 @@ export const PageRenderer = React.memo(function PageRenderer({
 
     try {
       const page = await pdfDoc.getPage(pageNumber)
+
+      // Check if still mounted after async operation
+      if (!isMountedRef.current || !canvasRef.current) return
+
       pageRef.current = page
       const viewport = page.getViewport({ scale })
 
@@ -92,6 +108,9 @@ export const PageRenderer = React.memo(function PageRenderer({
       canvas.style.width = `${viewport.width}px`
       canvas.style.height = `${viewport.height}px`
 
+      // Clear canvas before rendering (important for rotation/document changes)
+      context.clearRect(0, 0, canvas.width, canvas.height)
+
       // Scale context to match DPR
       context.scale(dpr, dpr)
 
@@ -109,59 +128,88 @@ export const PageRenderer = React.memo(function PageRenderer({
         canvas,
       }).promise
 
+      // Check if still mounted after render
+      if (!isMountedRef.current) return
+
       // Render text layer for text selection
-      if (textLayerRef.current) {
-        // Clear previous text layer content safely
-        while (textLayerRef.current.firstChild) {
-          textLayerRef.current.removeChild(textLayerRef.current.firstChild)
-        }
+      const textLayerContainer = textLayerRef.current
+      if (textLayerContainer) {
+        // Clear previous text layer content safely using replaceChildren (avoids removeChild race conditions)
+        textLayerContainer.replaceChildren()
 
         // Set text layer dimensions to match viewport exactly
         // Note: TextLayer uses CSS pixels (not scaled by DPR)
-        textLayerRef.current.style.width = `${viewport.width}px`
-        textLayerRef.current.style.height = `${viewport.height}px`
+        textLayerContainer.style.width = `${viewport.width}px`
+        textLayerContainer.style.height = `${viewport.height}px`
         // Reset any transforms that might interfere
-        textLayerRef.current.style.transform = ''
-        textLayerRef.current.style.transformOrigin = '0 0'
+        textLayerContainer.style.transform = ''
+        textLayerContainer.style.transformOrigin = '0 0'
 
         const textContent = await page.getTextContent()
-        const textLayer = new TextLayer({
-          textContentSource: textContent,
-          container: textLayerRef.current,
-          viewport: viewport,
-        })
-        await textLayer.render()
 
-        // Debug: Log text layer span count for verification
-        console.log('[PageRenderer] TextLayer rendered, spans:', textLayerRef.current.querySelectorAll('span').length)
+        // Check if container is still mounted after async operation
+        if (textLayerRef.current) {
+          const textLayer = new TextLayer({
+            textContentSource: textContent,
+            container: textLayerRef.current,
+            viewport: viewport,
+          })
+          await textLayer.render()
+
+          // Debug: Log text layer span count for verification
+          if (textLayerRef.current) {
+            console.log('[PageRenderer] TextLayer rendered, spans:', textLayerRef.current.querySelectorAll('span').length)
+          }
+        }
       }
 
-      setHasRendered(true)
-      setIsRendering(false)
+      if (isMountedRef.current) {
+        setHasRendered(true)
+        setIsRendering(false)
+      }
     } catch (err) {
       console.error("Failed to render page:", err)
-      setIsRendering(false)
+      if (isMountedRef.current) {
+        setIsRendering(false)
+      }
     }
-  }, [pdfDoc, pageNumber, scale, isVisible])
+  }, [pdfDoc, pageNumber, scale, isVisible, documentVersion])
 
-  // Reset dimensions when pdfDoc changes (e.g., after rotation)
+  // Track previous documentVersion for immediate re-render on document changes
+  const prevDocVersionRef = useRef(documentVersion)
+
+  // Reset dimensions when pdfDoc or documentVersion changes (e.g., after rotation)
   useEffect(() => {
     setPageDimensions(null)
     setHasRendered(false)
-  }, [pdfDoc])
+  }, [pdfDoc, documentVersion])
 
   // Get dimensions on mount (for placeholder sizing)
   useEffect(() => {
     getPageDimensions()
   }, [getPageDimensions])
 
-  // Debounced render on changes (only when visible)
+  // Immediate render when documentVersion changes (user action like rotation)
+  useEffect(() => {
+    if (prevDocVersionRef.current !== documentVersion && isVisible) {
+      prevDocVersionRef.current = documentVersion
+      // Cancel any pending debounced render
+      if (renderTaskRef.current) {
+        clearTimeout(renderTaskRef.current)
+        renderTaskRef.current = null
+      }
+      // Render immediately for user-initiated changes
+      renderPage()
+    }
+  }, [documentVersion, isVisible, renderPage])
+
+  // Debounced render on scale/visibility changes (not document changes)
   useEffect(() => {
     if (!isVisible) return
 
     renderTaskRef.current = setTimeout(() => {
       renderPage()
-    }, 100) // Increased debounce for better performance
+    }, 100) // Debounce for performance
 
     return () => {
       if (renderTaskRef.current) {

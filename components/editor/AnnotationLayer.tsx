@@ -161,15 +161,41 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
 
     console.log('[AnnotationLayer] Initializing canvas for page', pageNumber, ':', { width, height, scale, canvasWidth, canvasHeight })
 
-    // Dispose existing canvas if any
+    // Dispose existing canvas SYNCHRONOUSLY during reinitialization
+    // (We MUST dispose before creating a new canvas on the same element)
     if (fabricRef.current) {
-      fabricRef.current.dispose()
+      const oldCanvas = fabricRef.current
       fabricRef.current = null
+      try {
+        oldCanvas.off()
+        oldCanvas.clear()
+        oldCanvas.dispose()
+      } catch (err) {
+        console.debug('[AnnotationLayer] Reinit dispose error (safe to ignore):', err)
+      }
+    }
+
+    // Ensure canvas element is clean before creating new Fabric canvas
+    // Fabric.js stores a reference on the element - we need to clear any leftover state
+    const canvasEl = canvasRef.current
+    if (!canvasEl) return
+
+    // Check if canvas element is wrapped by a previous Fabric instance
+    // If so, unwrap it to allow fresh initialization
+    const existingWrapper = canvasEl.parentElement
+    if (existingWrapper && existingWrapper.classList.contains('canvas-container')) {
+      // Move canvas out of wrapper
+      const grandparent = existingWrapper.parentElement
+      if (grandparent) {
+        grandparent.insertBefore(canvasEl, existingWrapper)
+        // Remove the old wrapper and its contents (upper canvas, etc.)
+        existingWrapper.remove()
+      }
     }
 
     // Create canvas with proper dimensions
     // Fabric.js v7 handles DPR internally, so we don't need manual scaling
-    const canvas = new Canvas(canvasRef.current, {
+    const canvas = new Canvas(canvasEl, {
       width: canvasWidth,
       height: canvasHeight,
       selection: activeTool === 'select',
@@ -224,10 +250,45 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     return () => {
       // Unregister canvas before disposing
       unregisterCanvas(pageNumber)
+
       if (fabricRef.current) {
-        fabricRef.current.dispose()
+        const canvasToCleanup = fabricRef.current
         fabricRef.current = null
+
+        // We MUST call dispose() to clear Fabric's internal canvas markers
+        // But dispose() causes NotFoundError when React has changed the DOM
+        // Solution: Install a global patched removeChild that suppresses NotFoundError
+        // This is safe because the patched version is strictly a superset of the original
+        if (!('__fabricRemoveChildPatched' in Node.prototype)) {
+          const originalRemoveChild = Node.prototype.removeChild
+          Node.prototype.removeChild = function<T extends Node>(this: Node, child: T): T {
+            try {
+              return originalRemoveChild.call(this, child) as T
+            } catch (err) {
+              if (err instanceof DOMException && err.name === 'NotFoundError') {
+                // Silently ignore - element already removed (common during React reconciliation)
+                return child
+              }
+              throw err
+            }
+          }
+          // Mark as patched so we don't patch again
+          Object.defineProperty(Node.prototype, '__fabricRemoveChildPatched', {
+            value: true,
+            writable: false,
+            enumerable: false,
+          })
+        }
+
+        try {
+          canvasToCleanup.off()
+          canvasToCleanup.clear()
+          canvasToCleanup.dispose()
+        } catch (err) {
+          console.debug('[AnnotationLayer] Cleanup error (safe to ignore):', err)
+        }
       }
+
       canvasDimensionsRef.current = null
       setCanvasReady(false)  // Reset on cleanup
     }

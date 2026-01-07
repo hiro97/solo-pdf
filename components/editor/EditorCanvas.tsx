@@ -115,8 +115,9 @@ export function EditorCanvas({
       <div className="flex flex-col items-center py-4 gap-4">
         {pages.map((pageNumber) => (
           <PageRenderer
-            key={`${pageNumber}-v${documentVersion}`}
+            key={pageNumber}
             pdfDoc={pdfDoc}
+            documentVersion={documentVersion}
             pageNumber={pageNumber}
             scale={scale}
             activeTool={activeTool}

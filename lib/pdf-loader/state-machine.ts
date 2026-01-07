@@ -68,11 +68,12 @@ export function pdfLoadReducer(
       }
 
     case 'LOAD_COMPLETE':
-      // 모든 로딩 관련 상태에서 완료 가능
+      // 로딩 관련 상태 또는 ready 상태(문서 재로드: 회전, 페이지 삭제 등)에서 완료 가능
       if (
         state.status !== 'loading' &&
         state.status !== 'decrypting' &&
-        state.status !== 'processing'
+        state.status !== 'processing' &&
+        state.status !== 'ready'
       ) {
         return state
       }
