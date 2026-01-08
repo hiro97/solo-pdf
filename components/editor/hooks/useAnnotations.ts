@@ -9,7 +9,7 @@ interface UseAnnotationsReturn {
   annotations: AnnotationStore
 
   // Actions
-  addAnnotation: (pageNumber: number, fabricJSON: string, type: ToolType) => string
+  addAnnotation: (pageNumber: number, fabricJSON: string, type: ToolType, pageRotation?: number) => string
   removeAnnotation: (pageNumber: number, annotationId: string) => void
   updateAnnotation: (pageNumber: number, annotationId: string, fabricJSON: string) => void
   getPageAnnotations: (pageNumber: number) => Annotation[]
@@ -88,7 +88,8 @@ export function useAnnotations(): UseAnnotationsReturn {
   const addAnnotation = useCallback((
     pageNumber: number,
     fabricJSON: string,
-    type: ToolType
+    type: ToolType,
+    pageRotation: number = 0
   ): string => {
     const id = generateId()
     const annotation: Annotation = {
@@ -97,6 +98,7 @@ export function useAnnotations(): UseAnnotationsReturn {
       pageNumber,
       fabricJSON,
       createdAt: Date.now(),
+      pageRotation,
     }
 
     // Record for undo

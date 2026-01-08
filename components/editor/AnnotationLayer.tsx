@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { Canvas, PencilBrush, IText, Rect, Ellipse, Path, FabricObject, FabricImage } from 'fabric'
 import type { ToolType, ToolSettings, Annotation } from './types'
 import { registerCanvas, unregisterCanvas } from '@/lib/canvas-registry'
+import { transformForRotation } from '@/lib/pdf-coordinates'
 
 interface AnnotationLayerProps {
   width: number
@@ -13,11 +14,12 @@ interface AnnotationLayerProps {
   toolSettings: ToolSettings
   pageNumber: number
   annotations: Annotation[]
-  onAnnotationAdd: (fabricJSON: string, type: ToolType) => string
+  onAnnotationAdd: (fabricJSON: string, type: ToolType, pageRotation?: number) => string
   onAnnotationUpdate: (id: string, fabricJSON: string) => void
   onAnnotationRemove: (id: string) => void
   onSignatureRequest?: () => void
   onStyleSync?: (styles: Partial<ToolSettings>) => void
+  pageRotation?: number
 }
 
 export const AnnotationLayer = React.memo(function AnnotationLayer({
@@ -33,6 +35,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
   onAnnotationRemove,
   onSignatureRequest,
   onStyleSync,
+  pageRotation,
 }: AnnotationLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<Canvas | null>(null)
@@ -462,7 +465,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       const currentTool = activeToolRef.current
       if (e.path && currentTool === 'draw') {
         const json = JSON.stringify(e.path.toObject())
-        const annotationId = onAnnotationAddRef.current(json, 'draw')
+        const annotationId = onAnnotationAddRef.current(json, 'draw', pageRotation || 0)
         ;(e.path as unknown as { annotationId: string }).annotationId = annotationId
       }
     }
@@ -590,7 +593,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         cvs.renderAll()
 
         const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
-        const annotationId = onAnnotationAddRef.current(json, 'image')
+        const annotationId = onAnnotationAddRef.current(json, 'image', pageRotation || 0)
         ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
       }
       img.src = dataUrl
@@ -628,7 +631,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         cvs.renderAll()
 
         const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
-        const annotationId = onAnnotationAddRef.current(json, 'signature')
+        const annotationId = onAnnotationAddRef.current(json, 'signature', pageRotation || 0)
         ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
 
         // Clear pending position
@@ -711,7 +714,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         if (currentTool !== 'circle' && currentTool !== 'highlighter' && currentTool !== 'redact') {
           type = shape.fill === '#000000' ? 'redact' : 'rectangle'
         }
-        const annotationId = onAnnotationAddRef.current(json, type)
+        const annotationId = onAnnotationAddRef.current(json, type, pageRotation || 0)
         ;(shape as unknown as { annotationId: string }).annotationId = annotationId
       } else {
         canvas.remove(shape)
@@ -804,7 +807,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
           (text as unknown as { toObject: (props: string[]) => object }).toObject(['styles'])
         )
         if (isNewTextBox) {
-          const annotationId = onAnnotationAddRef.current(json, 'text')
+          const annotationId = onAnnotationAddRef.current(json, 'text', pageRotation || 0)
           ;(text as unknown as { annotationId: string }).annotationId = annotationId
           isNewTextBox = false
         }
@@ -966,11 +969,11 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
       canvas.renderAll()
 
       const json = JSON.stringify((fabricImage as unknown as { toObject: (props: string[]) => object }).toObject(['src']))
-      const annotationId = onAnnotationAddRef.current(json, 'signature')
+      const annotationId = onAnnotationAddRef.current(json, 'signature', pageRotation || 0)
       ;(fabricImage as unknown as { annotationId: string }).annotationId = annotationId
     }
     img.src = dataUrl
-  }, [width, height, scale])
+  }, [width, height, scale, pageRotation])
 
   // Expose addSignatureImage method via ref or callback
   useEffect(() => {
@@ -1002,6 +1005,8 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     canvas.clear()
 
     // Load annotations for this page
+    const currentRotation = pageRotation || 0
+
     annotations.forEach(annotation => {
       try {
         const objData = JSON.parse(annotation.fabricJSON)
@@ -1010,8 +1015,35 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
         // Also handle legacy lowercase types for backwards compatibility
         const objType = objData.type?.toLowerCase()
 
+        // Transform coordinates if page rotation changed since annotation was created
+        const annotationRotation = annotation.pageRotation || 0
+        let transformedData = objData
+
+        if (annotationRotation !== currentRotation) {
+          console.log(`[AnnotationLayer] Transforming annotation from ${annotationRotation}° to ${currentRotation}°`)
+
+          // Calculate unscaled page dimensions (width/height props are scaled)
+          const unscaledWidth = width / scale
+          const unscaledHeight = height / scale
+
+          const transformed = transformForRotation(
+            objData,
+            annotationRotation,
+            currentRotation,
+            unscaledWidth,   // unscaled page width
+            unscaledHeight   // unscaled page height
+          )
+
+          transformedData = {
+            ...objData,
+            left: transformed.left,
+            top: transformed.top,
+            ...(transformed.angle !== undefined && { angle: transformed.angle }),
+          }
+        }
+
         // Fabric.js v7: 'type' is a read-only getter, must exclude from spread
-        const { type: _, ...restData } = objData
+        const { type: _, ...restData } = transformedData
 
         if (objType === 'i-text' || objType === 'itext') {
           const text = new IText(objData.text || '', {
@@ -1109,7 +1141,7 @@ export const AnnotationLayer = React.memo(function AnnotationLayer({
     })
 
     canvas.renderAll()
-  }, [pageNumber, annotations, canvasReady])
+  }, [pageNumber, annotations, canvasReady, pageRotation, width, height, scale])
 
   // Update wrapper pointer-events when tool changes to textSelect
   useEffect(() => {

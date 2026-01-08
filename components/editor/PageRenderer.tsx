@@ -22,6 +22,8 @@ interface PageRendererProps {
   isVisible?: boolean
   /** Document version - triggers re-render when changed (e.g., after rotation) */
   documentVersion?: number
+  /** Page rotation angle (0, 90, 180, 270) */
+  pageRotation?: number
 }
 
 export const PageRenderer = React.memo(function PageRenderer({
@@ -39,6 +41,7 @@ export const PageRenderer = React.memo(function PageRenderer({
   onStyleSync,
   isVisible = true,
   documentVersion = 0,
+  pageRotation,
 }: PageRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -261,8 +264,8 @@ export const PageRenderer = React.memo(function PageRenderer({
 
   // Handle annotation callbacks with pageNumber
   const handleAnnotationAdd = useCallback(
-    (fabricJSON: string, type: ToolType): string => {
-      return onAnnotationAdd(pageNumber, fabricJSON, type)
+    (fabricJSON: string, type: ToolType, pageRotation?: number): string => {
+      return onAnnotationAdd(pageNumber, fabricJSON, type, pageRotation)
     },
     [onAnnotationAdd, pageNumber]
   )
@@ -332,6 +335,7 @@ export const PageRenderer = React.memo(function PageRenderer({
               onAnnotationRemove={handleAnnotationRemove}
               onSignatureRequest={onSignatureRequest}
               onStyleSync={onStyleSync}
+              pageRotation={pageRotation}
             />
           )}
 

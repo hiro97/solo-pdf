@@ -55,6 +55,9 @@ export function usePDFDocument() {
   // 문서 버전 (회전, 순서변경 등 PDF 수정 시 증가하여 캐시 무효화에 사용)
   const [documentVersion, setDocumentVersion] = useState(0)
 
+  // 페이지 회전 상태 추적 (페이지 인덱스 → 회전 각도)
+  const [pageRotations, setPageRotations] = useState<Map<number, number>>(new Map())
+
   // 암호 프롬프트 상태
   const [passwordPrompt, setPasswordPrompt] = useState<PasswordPromptState>({
     isOpen: false,
@@ -124,6 +127,7 @@ export function usePDFDocument() {
       })
 
       setCurrentPage(1)
+      setPageRotations(new Map()) // 새 문서 로드 시 회전 상태 초기화
 
       // 암호화된 PDF 안내
       if (result.isEncrypted) {
@@ -227,9 +231,11 @@ export function usePDFDocument() {
     if (!derived.pdfLib) return
 
     try {
+      console.log('[rotatePage] Rotating page at 0-based index:', pageIndex, 'Total pages:', derived.pageCount)
       const page = derived.pdfLib.getPage(pageIndex)
       const currentRotation = page.getRotation().angle
       const newAngle = (currentRotation + rotationDegrees) % 360
+      console.log('[rotatePage] Current rotation:', currentRotation, 'New rotation:', newAngle)
       page.setRotation(degrees(newAngle))
 
       // PDF.js 문서 다시 로드
@@ -251,6 +257,13 @@ export function usePDFDocument() {
         pdfJs: pdfJsDoc,
         isEncrypted: derived.isEncrypted,
         pageCount: pdfJsDoc.numPages,
+      })
+
+      // 회전 각도 추적 (어노테이션 변환에 사용)
+      setPageRotations(prev => {
+        const newMap = new Map(prev)
+        newMap.set(pageIndex, newAngle)
+        return newMap
       })
 
       // 버전 증가 (캐시 무효화 트리거)
@@ -294,6 +307,23 @@ export function usePDFDocument() {
 
       // 현재 페이지 조정
       setCurrentPage((prev) => Math.min(prev, pdfJsDoc.numPages))
+
+      // 회전 상태 업데이트 - 삭제된 페이지 제거 및 이후 페이지 인덱스 조정
+      setPageRotations(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(pageIndex)
+
+        // Shift indices for pages after deleted page
+        for (let i = pageIndex + 1; i < derived.pageCount; i++) {
+          const rotation = newMap.get(i)
+          if (rotation !== undefined) {
+            newMap.delete(i)
+            newMap.set(i - 1, rotation)
+          }
+        }
+
+        return newMap
+      })
 
       // 버전 증가 (캐시 무효화 트리거)
       setDocumentVersion(v => v + 1)
@@ -345,6 +375,18 @@ export function usePDFDocument() {
         pdfJs: pdfJsDoc,
         isEncrypted: derived.isEncrypted,
         pageCount: pdfJsDoc.numPages,
+      })
+
+      // 회전 상태 업데이트 - 페이지 순서와 동일하게 재정렬
+      setPageRotations(prev => {
+        const newMap = new Map<number, number>()
+        pageIndices.forEach((oldIndex, newIndex) => {
+          const rotation = prev.get(oldIndex)
+          if (rotation !== undefined) {
+            newMap.set(newIndex, rotation)
+          }
+        })
+        return newMap
       })
 
       // 버전 증가 (캐시 무효화 트리거)
@@ -499,10 +541,18 @@ export function usePDFDocument() {
     loaderRef.current = null
     dispatch({ type: 'RESET' })
     setCurrentPage(1)
+    setPageRotations(new Map())
     setPasswordPrompt({ isOpen: false, isRetry: false, resolve: null })
     setPasswordFallback({ isOpen: false, isRetry: false })
     passwordFallbackFileRef.current = null
   }, [])
+
+  /**
+   * 페이지 회전 각도 조회
+   */
+  const getPageRotation = useCallback((pageIndex: number): number => {
+    return pageRotations.get(pageIndex) || 0
+  }, [pageRotations])
 
   // 파생 상태 계산
   const derived = deriveLoadStateInfo(loadState)
@@ -515,6 +565,7 @@ export function usePDFDocument() {
     pageCount: derived.pageCount,
     currentPage,
     documentVersion,
+    pageRotations,
     isLoading: derived.isLoading,
     error: derived.error?.userMessage || ((passwordPrompt.isRetry || passwordFallback.isRetry) ? '암호가 올바르지 않습니다' : null),
     needsPassword: derived.needsPassword || passwordPrompt.isOpen || passwordFallback.isOpen,
@@ -534,5 +585,6 @@ export function usePDFDocument() {
     extractPages,
     savePDF,
     reset,
+    getPageRotation,
   }
 }

@@ -13,7 +13,7 @@ interface EditorCanvasProps {
   activeTool: ToolType
   toolSettings: ToolSettings
   getPageAnnotations: (pageNumber: number) => Annotation[]
-  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => string
+  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType, pageRotation?: number) => string
   onAnnotationUpdate: (pageNumber: number, id: string, fabricJSON: string) => void
   onAnnotationRemove: (pageNumber: number, id: string) => void
   onSignatureRequest?: () => void
@@ -23,6 +23,8 @@ interface EditorCanvasProps {
   className?: string
   /** Document version - changes trigger re-render (e.g., after rotation) */
   documentVersion?: number
+  /** Get rotation angle for a page */
+  getPageRotation: (pageIndex: number) => number
 }
 
 export function EditorCanvas({
@@ -41,18 +43,25 @@ export function EditorCanvas({
   targetPage,
   className,
   documentVersion = 0,
+  getPageRotation,
 }: EditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // Track which pages are visible (with buffer)
   // Initialize as empty - pages are set visible via useEffect to ensure proper mount cycle
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set())
   const [currentPage, setCurrentPage] = useState(1)
+  const currentPageRef = useRef(1)
 
   // Initialize first few pages as visible AFTER mount
   // This ensures page 1 goes through the same state-change-triggered mount flow as scrolled pages
   useEffect(() => {
     setVisiblePages(new Set([1, 2, 3]))
   }, [])
+
+  // Keep a ref in sync for scroll handlers
+  useEffect(() => {
+    currentPageRef.current = currentPage
+  }, [currentPage])
 
   // Notify parent of current page change (deferred to avoid setState during render)
   useEffect(() => {
@@ -71,7 +80,7 @@ export function EditorCanvas({
     }
   }, [targetPage])
 
-  // Track page visibility and update current page
+  // Track page visibility (used for lazy rendering)
   const handlePageVisible = useCallback(
     (pageNumber: number, isIntersecting: boolean) => {
       if (isIntersecting) {
@@ -85,9 +94,6 @@ export function EditorCanvas({
           }
           return next
         })
-
-        // Update current page (this triggers useEffect which notifies parent)
-        setCurrentPage(prev => prev !== pageNumber ? pageNumber : prev)
       }
     },
     [pageCount]
@@ -103,6 +109,60 @@ export function EditorCanvas({
 
   // Generate array of page numbers
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1)
+
+  // Determine current page based on scroll position (page closest to container center)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let frameId: number | null = null
+
+    const handleScroll = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        if (!containerRef.current) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const centerY = containerRect.top + containerRect.height / 2
+
+        let closestPage = currentPageRef.current
+        let minDistance = Infinity
+
+        visiblePages.forEach(pageNumber => {
+          const el = containerRef.current!.querySelector<HTMLElement>(
+            `[data-page-number="${pageNumber}"]`
+          )
+          if (!el) return
+
+          const rect = el.getBoundingClientRect()
+          const pageCenterY = rect.top + rect.height / 2
+          const distance = Math.abs(pageCenterY - centerY)
+
+          if (distance < minDistance) {
+            minDistance = distance
+            closestPage = pageNumber
+          }
+        })
+
+        setCurrentPage(prev => (prev !== closestPage ? closestPage : prev))
+      })
+    }
+
+    // Run once to initialize current page based on initial scroll position
+    handleScroll()
+
+    container.addEventListener("scroll", handleScroll)
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      container.removeEventListener("scroll", handleScroll)
+    }
+  }, [visiblePages])
 
   return (
     <div
@@ -130,6 +190,7 @@ export function EditorCanvas({
             onPageVisible={handlePageVisible}
             onStyleSync={onStyleSync}
             isVisible={visiblePages.has(pageNumber)}
+            pageRotation={getPageRotation(pageNumber - 1)}
           />
         ))}
       </div>

@@ -70,10 +70,14 @@ export interface Annotation {
   pageNumber: number
   fabricJSON: string  // JSON serialized fabric object
   createdAt: number
+  pageRotation?: number  // Rotation angle when annotation was created (0, 90, 180, 270)
 }
 
 // Per-page annotation storage
 export type AnnotationStore = Map<number, Annotation[]>
+
+// Page rotation tracking (pageIndex -> rotation angle)
+export type PageRotationStore = Map<number, number>
 
 // Canvas state for annotation layer
 export interface AnnotationLayerState {

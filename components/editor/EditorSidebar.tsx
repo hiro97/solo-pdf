@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Download, Trash2 } from "lucide-react"
+import { Download, Trash2, RotateCw } from "lucide-react"
 import type { PDFDocumentProxy } from "pdfjs-dist"
 
 interface EditorSidebarProps {
@@ -15,6 +15,9 @@ interface EditorSidebarProps {
   onMergePDF?: (file: File, insertAtIndex: number) => void
   onExtractPages?: (pageIndices: number[]) => void
   onDeletePages?: (pageIndices: number[]) => void
+  onRotatePages?: (pageIndices: number[]) => void
+  /** Notify parent when thumbnail selection changes (1-based page numbers) */
+  onSelectedPagesChange?: (pageNumbers: number[]) => void
   className?: string
 }
 
@@ -30,6 +33,8 @@ export function EditorSidebar({
   onMergePDF,
   onExtractPages,
   onDeletePages,
+  onRotatePages,
+  onSelectedPagesChange,
   className,
 }: EditorSidebarProps) {
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map())
@@ -45,12 +50,25 @@ export function EditorSidebar({
   const observerRef = useRef<IntersectionObserver | null>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
 
+  // Notify parent when selectedPages changes (after render completes)
+  useEffect(() => {
+    onSelectedPagesChange?.([...selectedPages].sort((a, b) => a - b))
+  }, [selectedPages, onSelectedPagesChange])
+
+  // Helper to update selection state
+  const updateSelectedPages = useCallback(
+    (updater: (prev: Set<number>) => Set<number>) => {
+      setSelectedPages(prev => updater(prev))
+    },
+    []
+  )
+
   // Clear cache when PDF changes or document version changes (rotation, reorder, etc.)
   useEffect(() => {
     setThumbnails(new Map())
-    setSelectedPages(new Set())
+    updateSelectedPages(() => new Set())
     lastSelectedRef.current = null
-  }, [pdfDoc?.fingerprints[0], documentVersion])
+  }, [pdfDoc?.fingerprints[0], documentVersion, updateSelectedPages])
 
   // Generate a single thumbnail with higher resolution
   const generateThumbnail = useCallback(async (pageNumber: number) => {
@@ -170,17 +188,23 @@ export function EditorSidebar({
     const isShift = event.shiftKey
 
     if (isShift && lastSelectedRef.current !== null) {
-      // Shift-click: select range
+      // Shift-click: select range between last anchor and clicked page
       const start = Math.min(lastSelectedRef.current, pageNumber)
       const end = Math.max(lastSelectedRef.current, pageNumber)
       const range = new Set<number>()
       for (let i = start; i <= end; i++) {
         range.add(i)
       }
-      setSelectedPages(isCtrlOrCmd ? prev => new Set([...prev, ...range]) : range)
+      if (isCtrlOrCmd) {
+        updateSelectedPages(prev => new Set([...prev, ...range]))
+      } else {
+        updateSelectedPages(() => range)
+      }
+      // Update anchor to the last clicked page for predictable subsequent shift-clicks
+      lastSelectedRef.current = pageNumber
     } else if (isCtrlOrCmd) {
       // Ctrl/Cmd-click: toggle selection
-      setSelectedPages(prev => {
+      updateSelectedPages(prev => {
         const next = new Set(prev)
         if (next.has(pageNumber)) {
           next.delete(pageNumber)
@@ -192,11 +216,11 @@ export function EditorSidebar({
       lastSelectedRef.current = pageNumber
     } else {
       // Regular click: select single page and navigate
-      setSelectedPages(new Set([pageNumber]))
+      updateSelectedPages(() => new Set([pageNumber]))
       lastSelectedRef.current = pageNumber
       onPageSelect(pageNumber)
     }
-  }, [onPageSelect])
+  }, [onPageSelect, updateSelectedPages])
 
   // Drag and drop handlers for reordering
   const handleDragStart = useCallback((pageNumber: number, event: React.DragEvent) => {
@@ -307,9 +331,19 @@ export function EditorSidebar({
   const handleDelete = useCallback(() => {
     if (selectedPages.size > 0 && onDeletePages) {
       onDeletePages([...selectedPages].map(p => p - 1).sort((a, b) => a - b))
-      setSelectedPages(new Set())
+      updateSelectedPages(() => new Set())
     }
-  }, [selectedPages, onDeletePages])
+  }, [selectedPages, onDeletePages, updateSelectedPages])
+
+  const handleRotate = useCallback(() => {
+    if (selectedPages.size > 0 && onRotatePages) {
+      const pageNumbers = [...selectedPages].sort((a, b) => a - b)
+      const pageIndices = pageNumbers.map(p => p - 1)
+      console.log('[EditorSidebar] Selected pages (1-based):', pageNumbers)
+      console.log('[EditorSidebar] Converted to indices (0-based):', pageIndices)
+      onRotatePages(pageIndices)
+    }
+  }, [selectedPages, onRotatePages])
 
   if (!pdfDoc) return null
 
@@ -343,6 +377,15 @@ export function EditorSidebar({
         <div className="p-1.5 border-b border-border/50 bg-background/80 flex items-center justify-between gap-1 sticky top-8 z-10 backdrop-blur-sm">
           <span className="text-[10px] font-mono text-muted-foreground">{selectedPages.size} sel</span>
           <div className="flex gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={handleRotate}
+              title="Rotate selected pages"
+            >
+              <RotateCw className="h-3 w-3" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

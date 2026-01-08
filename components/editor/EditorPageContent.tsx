@@ -33,6 +33,8 @@ export function EditorPageContent() {
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<SaveResult | null>(null)
+  // Current thumbnail selection (1-based page numbers)
+  const [selectedThumbnailPages, setSelectedThumbnailPages] = useState<number[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -59,6 +61,7 @@ export function EditorPageContent() {
     mergePDF,
     extractPages,
     savePDF,
+    getPageRotation,
   } = usePDFDocument()
 
   // Scroll target page (set when sidebar thumbnail is clicked)
@@ -143,18 +146,6 @@ export function EditorPageContent() {
     fileInputRef.current?.click()
   }, [])
 
-  // Handle rotate current page
-  const handleRotate = useCallback(() => {
-    rotatePage(currentPage - 1, 90)
-  }, [rotatePage, currentPage])
-
-  // Handle delete current page
-  const handleDelete = useCallback(() => {
-    if (pageCount > 1) {
-      deletePage(currentPage - 1)
-    }
-  }, [deletePage, currentPage, pageCount])
-
   // Handle delete multiple pages from sidebar
   const handleDeletePages = useCallback(
     (pageIndices: number[]) => {
@@ -168,6 +159,48 @@ export function EditorPageContent() {
     },
     [deletePage, pageCount]
   )
+
+  // Handle rotate multiple pages from sidebar
+  const handleRotatePages = useCallback(
+    async (pageIndices: number[]) => {
+      console.log('[handleRotatePages] Rotating pages (0-based indices):', pageIndices)
+      // Rotate all selected pages sequentially
+      for (const index of pageIndices) {
+        console.log('[handleRotatePages] Rotating page at index:', index)
+        await rotatePage(index, 90)
+      }
+    },
+    [rotatePage]
+  )
+
+  // Handle rotate action from top bar
+  // - If thumbnails have an explicit selection, rotate those pages
+  // - Otherwise, rotate the currently focused page in the main viewer
+  const handleRotate = useCallback(() => {
+    if (selectedThumbnailPages.length > 0) {
+      const indices = selectedThumbnailPages
+        .slice()
+        .sort((a, b) => a - b)
+        .map(p => p - 1)
+      handleRotatePages(indices)
+    } else {
+      rotatePage(currentPage - 1, 90)
+    }
+  }, [currentPage, rotatePage, selectedThumbnailPages, handleRotatePages])
+
+  // Handle delete action from top bar
+  // - If thumbnails have a selection, delete those pages
+  // - Otherwise, delete the current page
+  const handleDelete = useCallback(() => {
+    if (selectedThumbnailPages.length > 0) {
+      handleDeletePages(selectedThumbnailPages.map(p => p - 1))
+      return
+    }
+
+    if (pageCount > 1) {
+      deletePage(currentPage - 1)
+    }
+  }, [deletePage, currentPage, pageCount, selectedThumbnailPages, handleDeletePages])
 
   // Handle fit to page - uses canvasContainerRef for accurate dimensions
   const handleFitToPage = useCallback(async () => {
@@ -188,8 +221,8 @@ export function EditorPageContent() {
 
   // Handle annotation add (now receives pageNumber from PageRenderer)
   const handleAnnotationAdd = useCallback(
-    (pageNumber: number, fabricJSON: string, type: ToolType): string => {
-      return addAnnotation(pageNumber, fabricJSON, type)
+    (pageNumber: number, fabricJSON: string, type: ToolType, pageRotation?: number): string => {
+      return addAnnotation(pageNumber, fabricJSON, type, pageRotation)
     },
     [addAnnotation]
   )
@@ -502,6 +535,8 @@ export function EditorPageContent() {
           onMergePDF={mergePDF}
           onExtractPages={extractPages}
           onDeletePages={handleDeletePages}
+          onRotatePages={handleRotatePages}
+          onSelectedPagesChange={setSelectedThumbnailPages}
         />
 
         {/* Tool Settings Panel - now floats over canvas */}
@@ -528,6 +563,7 @@ export function EditorPageContent() {
             onStyleSync={handleStyleSync}
             targetPage={scrollTargetPage}
             documentVersion={documentVersion}
+            getPageRotation={getPageRotation}
           />
         </div>
       </div>

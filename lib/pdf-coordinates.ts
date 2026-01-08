@@ -23,6 +23,8 @@ export interface FabricObjectData {
   scaleY?: number
   fontSize?: number
   path?: Array<(string | number)[]>
+  angle?: number
+  type?: string
 }
 
 export interface PDFCoordinates {
@@ -145,4 +147,67 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
     g: ((num >> 8) & 255) / 255,
     b: (num & 255) / 255,
   }
+}
+
+/**
+ * Transform annotation coordinates for page rotation
+ *
+ * When a PDF page is rotated, annotations need their coordinates transformed
+ * to maintain their visual position relative to the rotated content.
+ *
+ * @param obj - Fabric.js object data with position and dimensions
+ * @param fromRotation - Rotation angle when annotation was created (0, 90, 180, 270)
+ * @param toRotation - Current page rotation angle (0, 90, 180, 270)
+ * @param pageWidth - Page width at fromRotation orientation (unscaled)
+ * @param pageHeight - Page height at fromRotation orientation (unscaled)
+ * @returns Transformed coordinates { left, top, angle }
+ */
+export function transformForRotation(
+  obj: FabricObjectData,
+  fromRotation: number,
+  toRotation: number,
+  pageWidth: number,
+  pageHeight: number
+): { left: number; top: number; angle?: number } {
+  // No transformation needed if rotations match
+  if (fromRotation === toRotation) {
+    return { left: obj.left || 0, top: obj.top || 0 }
+  }
+
+  // Calculate rotation delta (normalized to 0-360)
+  const delta = ((toRotation - fromRotation) + 360) % 360
+
+  // Calculate object dimensions (accounting for scaling)
+  const objWidth = (obj.width || 0) * (obj.scaleX || 1)
+  const objHeight = (obj.height || 0) * (obj.scaleY || 1)
+
+  // pageWidth and pageHeight are ALWAYS the unrotated page dimensions
+  let newLeft = obj.left || 0
+  let newTop = obj.top || 0
+  let newAngle = obj.angle || 0
+
+  switch (delta) {
+    case 90:
+      // 90° clockwise: (x, y) → (height - y - objHeight, x)
+      newLeft = pageHeight - (obj.top || 0) - objHeight
+      newTop = obj.left || 0
+      newAngle = (newAngle + 90) % 360
+      break
+
+    case 180:
+      // 180°: (x, y) → (width - x - objWidth, height - y - objHeight)
+      newLeft = pageWidth - (obj.left || 0) - objWidth
+      newTop = pageHeight - (obj.top || 0) - objHeight
+      newAngle = (newAngle + 180) % 360
+      break
+
+    case 270:
+      // 270° clockwise (90° counter-clockwise): (x, y) → (y, width - x - objWidth)
+      newLeft = obj.top || 0
+      newTop = pageWidth - (obj.left || 0) - objWidth
+      newAngle = (newAngle + 270) % 360
+      break
+  }
+
+  return { left: newLeft, top: newTop, angle: newAngle }
 }
