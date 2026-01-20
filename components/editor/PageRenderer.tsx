@@ -13,7 +13,7 @@ interface PageRendererProps {
   activeTool: ToolType
   toolSettings: ToolSettings
   annotations: Annotation[]
-  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType) => string
+  onAnnotationAdd: (pageNumber: number, fabricJSON: string, type: ToolType, pageRotation?: number) => string
   onAnnotationUpdate: (pageNumber: number, id: string, fabricJSON: string) => void
   onAnnotationRemove: (pageNumber: number, id: string) => void
   onSignatureRequest?: () => void

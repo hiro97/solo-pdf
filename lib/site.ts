@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "SOLO PDF",
-  description: "Free PDF editor online - edit, merge, split, compress, and sign PDFs directly in your browser. No upload required, 100% private.",
+  description: "Free PDF editor - edit, merge, split, sign PDFs. No upload, complete privacy.",
   url: "https://solo-pdf.com",
   email: "jonghyun.captureall@gmail.com",
   tagline: "Free PDF Editor. Zero Upload. Complete Privacy.",
