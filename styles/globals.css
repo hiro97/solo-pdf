@@ -257,6 +257,30 @@
     @apply text-[10px] font-mono uppercase tracking-wider text-muted-foreground;
   }
 
+  /* Screen reader only - visually hidden but accessible */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 1rem;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
   /* PDF.js Text Layer - for text selection (PDF.js v5 compatible) */
   /* PDF.js v5 uses CSS custom properties that we must apply via CSS rules */
   .textLayer {

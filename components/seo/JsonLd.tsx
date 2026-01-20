@@ -23,7 +23,7 @@ export function WebsiteJsonLd() {
     "@type": "WebSite",
     name: siteConfig.name,
     url: siteConfig.url,
-    description: siteConfig.description,
+    description: siteConfig.description.en,
     potentialAction: {
       "@type": "SearchAction",
       target: `${siteConfig.url}/blog?q={search_term_string}`,
@@ -40,7 +40,7 @@ export function OrganizationJsonLd() {
     "@type": "Organization",
     name: siteConfig.name,
     url: siteConfig.url,
-    description: siteConfig.description,
+    description: siteConfig.description.en,
     logo: `${siteConfig.url}/logo.png`,
   }
 
@@ -49,7 +49,7 @@ export function OrganizationJsonLd() {
 
 export function SoftwareApplicationJsonLd({
   name = siteConfig.name,
-  description = siteConfig.description,
+  description = siteConfig.description.en,
   applicationCategory = "BusinessApplication",
   operatingSystem = "Web Browser",
 }: {

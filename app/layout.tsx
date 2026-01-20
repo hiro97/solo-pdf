@@ -46,11 +46,26 @@ export const metadata: Metadata = {
     default: siteConfig.name,
     template: `%s | ${siteConfig.name}`,
   },
-  description: siteConfig.description,
+  description: siteConfig.description.en,
   metadataBase: new URL(siteConfig.url),
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+  },
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' }
+  ],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SOLO PDF'
+  },
   openGraph: {
     title: siteConfig.name,
-    description: siteConfig.description,
+    description: siteConfig.description.en,
     url: siteConfig.url,
     siteName: siteConfig.name,
     type: "website",
@@ -66,12 +81,15 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: siteConfig.name,
-    description: siteConfig.description,
+    description: siteConfig.description.en,
     images: [`${siteConfig.url}/og-image.png`],
   },
   robots: {
     index: true,
     follow: true,
+  },
+  other: {
+    'naver-site-verification': process.env.NEXT_PUBLIC_NAVER_VERIFICATION || '',
   },
 }
 
@@ -83,6 +101,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5977464916036907"
@@ -92,6 +114,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${greatVibes.variable} ${dancingScript.variable} ${allura.variable} min-h-screen bg-background font-sans antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-foreground focus:text-background focus:rounded-lg"
+        >
+          Skip to main content
+        </a>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
