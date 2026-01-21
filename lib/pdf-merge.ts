@@ -80,7 +80,11 @@ export async function mergePDFs(
 
   // Save merged PDF as ArrayBuffer
   const mergedPdfBytes = await mergedPdf.save()
-  return mergedPdfBytes.buffer
+  // Convert Uint8Array to ArrayBuffer (create a copy to ensure it's an ArrayBuffer, not SharedArrayBuffer)
+  const arrayBuffer = new ArrayBuffer(mergedPdfBytes.byteLength)
+  const view = new Uint8Array(arrayBuffer)
+  view.set(mergedPdfBytes)
+  return arrayBuffer
 }
 
 /**
