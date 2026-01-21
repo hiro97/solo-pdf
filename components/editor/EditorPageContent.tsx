@@ -9,6 +9,7 @@ import { EditorSidebar } from "./EditorSidebar"
 import { EditorCanvas } from "./EditorCanvas"
 import { ToolSettingsPanel } from "./ToolSettingsPanel"
 import { SaveToast } from "./SaveToast"
+import { BannerAdSlot } from "@/components/ads/AdSlot"
 import { usePDFDocument } from "./hooks/usePDFDocument"
 import { useZoom } from "./hooks/useZoom"
 import { useAnnotations } from "./hooks/useAnnotations"
@@ -588,6 +589,11 @@ export function EditorPageContent() {
         result={saveResult}
         onDismiss={handleDismissSaveResult}
       />
+
+      {/* Bottom Sticky Ad */}
+      <div className="mt-auto sticky bottom-0 left-0 right-0 bg-background border-t border-border z-30">
+        <BannerAdSlot slot="8315683602" />
+      </div>
     </div>
   )
 }

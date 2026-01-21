@@ -11,6 +11,7 @@ import {
   SoftwareApplicationJsonLd,
   OrganizationJsonLd,
 } from "@/components/seo/JsonLd"
+import { BannerAdSlot } from "@/components/ads/AdSlot"
 
 export function HomePageContent() {
   return (
@@ -18,6 +19,11 @@ export function HomePageContent() {
       {/* SEO structured data */}
       <SoftwareApplicationJsonLd />
       <OrganizationJsonLd />
+
+      {/* Top Banner Ad */}
+      <div className="w-full flex justify-center">
+        <BannerAdSlot slot="9628765271" />
+      </div>
 
       {/* Section 1: PDF Viewport Hero */}
       <PDFViewportHero />

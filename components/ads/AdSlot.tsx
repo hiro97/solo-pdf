@@ -81,7 +81,7 @@ export function AdSlot({
   const formatStyles = {
     auto: "min-h-[100px]",
     rectangle: "min-h-[250px] max-w-[300px]",
-    horizontal: "min-h-[90px] w-full",
+    horizontal: "h-[90px] w-full",
     vertical: "min-h-[600px] max-w-[160px]",
     infeed: "min-h-[120px] w-full",
   }
@@ -102,7 +102,7 @@ export function AdSlot({
           style={{ display: "block", width: "100%", height: "100%" }}
           data-ad-client={ADSENSE_CLIENT}
           data-ad-slot={slot}
-          data-ad-format={responsive ? "auto" : format}
+          data-ad-format={format === "horizontal" ? "horizontal" : (responsive ? "auto" : format)}
           data-full-width-responsive={responsive ? "true" : "false"}
         />
       )}
@@ -134,10 +134,26 @@ export function InfeedAdSlot({ className }: { className?: string }) {
   )
 }
 
-export function BannerAdSlot({ className }: { className?: string }) {
+export function BannerAdSlot({
+  slot,
+  className
+}: {
+  slot: string
+  className?: string
+}) {
+  const isDev = process.env.NODE_ENV === "development"
+
   return (
-    <div className={cn("my-6 flex justify-center", className)}>
-      <AdSlot slot="banner" format="horizontal" className="max-w-[728px]" />
+    <div className={cn("flex justify-center", className)}>
+      <div className="w-full max-w-[728px]">
+        {isDev ? (
+          <div className="h-[90px] flex items-center justify-center bg-muted/30 border border-dashed border-muted-foreground/20 text-xs text-muted-foreground">
+            Ad Placeholder (728×90)
+          </div>
+        ) : (
+          <AdSlot slot={slot} format="horizontal" responsive={false} />
+        )}
+      </div>
     </div>
   )
 }
