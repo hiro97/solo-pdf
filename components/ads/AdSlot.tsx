@@ -81,7 +81,7 @@ export function AdSlot({
   const formatStyles = {
     auto: "min-h-[100px]",
     rectangle: "min-h-[250px] max-w-[300px]",
-    horizontal: "h-[90px] w-full",
+    horizontal: "min-h-[90px] w-full",
     vertical: "min-h-[600px] max-w-[160px]",
     infeed: "min-h-[120px] w-full",
   }
@@ -144,14 +144,19 @@ export function BannerAdSlot({
   const isDev = process.env.NODE_ENV === "development"
 
   return (
-    <div className={cn("flex justify-center", className)}>
+    <div className={cn("flex justify-center w-full", className)}>
       <div className="w-full max-w-[728px]">
         {isDev ? (
-          <div className="h-[90px] flex items-center justify-center bg-muted/30 border border-dashed border-muted-foreground/20 text-xs text-muted-foreground">
-            Ad Placeholder (728×90)
+          <div className="h-[120px] flex items-center justify-center bg-muted/30 border-2 border-dashed border-muted-foreground/20 rounded-lg text-xs text-muted-foreground">
+            <div className="text-center">
+              <div className="font-semibold mb-1">Ad Placeholder</div>
+              <div className="text-[10px]">728×90 Leaderboard Banner</div>
+            </div>
           </div>
         ) : (
-          <AdSlot slot={slot} format="horizontal" responsive={false} />
+          <div className="min-h-[120px]">
+            <AdSlot slot={slot} format="horizontal" responsive={false} />
+          </div>
         )}
       </div>
     </div>

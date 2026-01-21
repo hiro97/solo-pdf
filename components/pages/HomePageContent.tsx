@@ -21,7 +21,7 @@ export function HomePageContent() {
       <OrganizationJsonLd />
 
       {/* Top Banner Ad */}
-      <div className="w-full flex justify-center">
+      <div className="w-full flex justify-center pt-8 pb-2 bg-muted/20">
         <BannerAdSlot slot="9628765271" />
       </div>
 

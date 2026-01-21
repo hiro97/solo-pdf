@@ -6,6 +6,8 @@ import { motion } from "framer-motion"
 import { FolderOpen, FileText, X } from "lucide-react"
 import { storePendingFile } from "@/lib/file-store"
 import { cn } from "@/lib/utils"
+import { usePDFMerge } from "@/components/editor/hooks/usePDFMerge"
+import { MultiFileMergePreview } from "./MultiFileMergePreview"
 
 interface FileSelectModalProps {
   className?: string
@@ -18,6 +20,10 @@ export function FileSelectModal({ className, variant = "default" }: FileSelectMo
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [showMergePreview, setShowMergePreview] = useState(false)
+
+  // PDF merge hook for multi-file support
+  const pdfMerge = usePDFMerge()
 
   const handleFile = useCallback(async (file: File) => {
     setError(null)
@@ -55,22 +61,72 @@ export function FileSelectModal({ className, variant = "default" }: FileSelectMo
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
-  }, [handleFile])
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      handleFiles(files)
+    }
+  }, [])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      handleFile(file)
+    const files = e.target.files ? Array.from(e.target.files) : []
+    if (files.length > 0) {
+      handleFiles(files)
       e.target.value = ""
     }
-  }, [handleFile])
+  }, [])
+
+  const handleFiles = useCallback(async (files: File[]) => {
+    setError(null)
+
+    // Validate files - filter for PDFs only
+    const pdfFiles = files.filter(f => f.type === "application/pdf")
+
+    if (pdfFiles.length === 0) {
+      setError("Please select PDF files")
+      return
+    }
+
+    // Single file: direct to editor (existing flow)
+    if (pdfFiles.length === 1) {
+      await handleFile(pdfFiles[0])
+      return
+    }
+
+    // Multiple files: show merge preview
+    pdfMerge.addFiles(pdfFiles)
+    setShowMergePreview(true)
+  }, [pdfMerge])
+
+  const handleCancelMerge = useCallback(() => {
+    setShowMergePreview(false)
+    pdfMerge.cancel()
+  }, [pdfMerge])
 
   const sizeClasses = {
     default: "h-40 max-w-lg",
     compact: "h-32 max-w-md",
     hero: "h-36 max-w-md",
+  }
+
+  // Show merge preview when multiple files selected
+  if (showMergePreview) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className={cn("h-[600px] max-w-2xl", className)}
+      >
+        <MultiFileMergePreview
+          files={pdfMerge.files}
+          isMerging={pdfMerge.isMerging}
+          progress={pdfMerge.progress}
+          onReorder={pdfMerge.reorderFiles}
+          onMerge={pdfMerge.mergePDFs}
+          onCancel={handleCancelMerge}
+        />
+      </motion.div>
+    )
   }
 
   return (
@@ -97,9 +153,11 @@ export function FileSelectModal({ className, variant = "default" }: FileSelectMo
         <input
           type="file"
           accept=".pdf,application/pdf"
+          multiple
           onChange={handleFileSelect}
           className="hidden"
           disabled={isLoading}
+          aria-label="Select PDF or drag here"
         />
 
         {isLoading ? (
@@ -130,7 +188,7 @@ export function FileSelectModal({ className, variant = "default" }: FileSelectMo
               Select PDF or drag here
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Files never leave your device
+              Select multiple PDFs to merge them • Files never leave your device
             </p>
           </>
         )}

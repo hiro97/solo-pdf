@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   Type,
   Image,
@@ -24,9 +24,12 @@ import {
   FolderOpen,
   FileText,
   ArrowRight,
+  Files,
 } from "lucide-react"
 import { storePendingFile } from "@/lib/file-store"
 import { cn } from "@/lib/utils"
+import { usePDFMerge } from "@/components/editor/hooks/usePDFMerge"
+import { MultiFileMergePreview } from "@/components/shared/MultiFileMergePreview"
 
 const sidebarTools = [
   { icon: MousePointer2, label: "Select" },
@@ -43,13 +46,17 @@ const usps = [
   { text: "No Sign Up Required", checked: true },
   { text: "No File Upload", checked: true },
   { text: "100% Local Processing", checked: true },
-  { text: "Works Offline", checked: true },
+  { text: "Merge Multiple PDFs", checked: true },
 ]
 
 export function PDFViewportHero() {
   const router = useRouter()
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [showMergePreview, setShowMergePreview] = useState(false)
+
+  // PDF merge hook for multi-file support
+  const pdfMerge = usePDFMerge()
 
   const handleFile = useCallback(async (file: File) => {
     if (!file || file.type !== "application/pdf") return
@@ -64,23 +71,78 @@ export function PDFViewportHero() {
     }
   }, [router])
 
+  const handleFiles = useCallback(async (files: File[]) => {
+    // Filter for PDF files only
+    const pdfFiles = files.filter(f => f.type === "application/pdf")
+
+    if (pdfFiles.length === 0) return
+
+    // Single file: direct to editor (existing flow)
+    if (pdfFiles.length === 1) {
+      await handleFile(pdfFiles[0])
+      return
+    }
+
+    // Multiple files: show merge preview
+    pdfMerge.addFiles(pdfFiles)
+    setShowMergePreview(true)
+  }, [pdfMerge, handleFile])
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
-  }, [handleFile])
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      handleFiles(files)
+    }
+  }, [handleFiles])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      handleFile(file)
+    const files = e.target.files ? Array.from(e.target.files) : []
+    if (files.length > 0) {
+      handleFiles(files)
       e.target.value = ""
     }
-  }, [handleFile])
+  }, [handleFiles])
+
+  const handleCancelMerge = useCallback(() => {
+    setShowMergePreview(false)
+    pdfMerge.cancel()
+  }, [pdfMerge])
+
+  // Show merge preview when multiple files selected
+  if (showMergePreview) {
+    return (
+      <section className="min-h-screen bg-muted/30 pt-4 pb-4 px-2 sm:px-4">
+        <motion.div
+          className="max-w-2xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-foreground">Merge PDFs</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Drag to reorder files, then click merge to combine them into a single PDF
+            </p>
+          </div>
+          <div className="h-[600px] border border-border/60 rounded-lg overflow-hidden bg-background shadow-2xl shadow-black/10">
+            <MultiFileMergePreview
+              files={pdfMerge.files}
+              isMerging={pdfMerge.isMerging}
+              progress={pdfMerge.progress}
+              onReorder={pdfMerge.reorderFiles}
+              onMerge={pdfMerge.mergePDFs}
+              onCancel={handleCancelMerge}
+            />
+          </div>
+        </motion.div>
+      </section>
+    )
+  }
 
   return (
-    <section className="min-h-screen bg-muted/30 pt-20 pb-4 px-2 sm:px-4">
+    <section className="min-h-screen bg-muted/30 pt-4 pb-4 px-2 sm:px-4">
       {/* PDF Viewer Container */}
       <motion.div
         className="h-[calc(100vh-6rem)] max-h-[800px] border border-border/60 rounded-lg overflow-hidden bg-background shadow-2xl shadow-black/10"
@@ -232,6 +294,7 @@ export function PDFViewportHero() {
                     <input
                       type="file"
                       accept=".pdf,application/pdf"
+                      multiple
                       onChange={handleFileSelect}
                       className="hidden"
                       disabled={isLoading}
@@ -243,8 +306,8 @@ export function PDFViewportHero() {
                       </>
                     ) : (
                       <>
-                        <FolderOpen className="w-4 h-4" />
-                        <span>Select PDF to Start</span>
+                        <Files className="w-4 h-4" />
+                        <span>Select PDF(s) to Start</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -258,7 +321,7 @@ export function PDFViewportHero() {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.4 }}
                 >
-                  or drag & drop anywhere
+                  Drop multiple PDFs to merge them
                 </motion.p>
               </div>
 
@@ -280,7 +343,8 @@ export function PDFViewportHero() {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <Upload className="w-8 h-8 text-[hsl(var(--free))]" />
-                    <span className="font-mono text-sm text-[hsl(var(--free))]">Drop PDF here</span>
+                    <span className="font-mono text-sm text-[hsl(var(--free))]">Drop PDF(s) here</span>
+                    <span className="font-mono text-xs text-[hsl(var(--free))]/70">Multiple files will be merged</span>
                   </div>
                 </motion.div>
               )}
